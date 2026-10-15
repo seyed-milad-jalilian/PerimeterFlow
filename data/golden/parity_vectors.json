@@ -1,0 +1,409 @@
+{
+  "tolerance": 1e-09,
+  "prng_vectors": [
+    {
+      "seed": 1,
+      "next_float": [
+        0.6270739405881613,
+        0.002735721180215478,
+        0.5274470399599522,
+        0.9810509674716741,
+        0.9683778982143849,
+        0.281103502959013,
+        0.6128388606011868,
+        0.7207431411370635,
+        0.425796952098608,
+        0.9948229456786066
+      ],
+      "next_gaussian": [
+        0.9659740590152261,
+        1.1231041937525543,
+        -0.049227862786499016,
+        -0.1808915033144518,
+        1.3060548291241842,
+        -1.2513702872399977,
+        -1.634414901027784,
+        0.9436811497095164,
+        1.0903569016386006,
+        0.14630552777559597
+      ]
+    },
+    {
+      "seed": 42,
+      "next_float": [
+        0.6011037519201636,
+        0.44829055899754167,
+        0.8524657934904099,
+        0.6697340414393693,
+        0.17481389874592423,
+        0.5265925421845168,
+        0.2732279943302274,
+        0.6247446539346129,
+        0.8654746483080089,
+        0.4723170551005751
+      ],
+      "next_gaussian": [
+        -0.956162229384149,
+        -0.2730261048826104,
+        -1.8416271847835968,
+        -1.1408820709540242,
+        -0.5294337937164153,
+        1.2285906730631042,
+        -0.26851772662724444,
+        -1.8017934176870904,
+        -0.6659991482570612,
+        -3.2790771333354165
+      ]
+    },
+    {
+      "seed": 12345,
+      "next_float": [
+        0.9797282677609473,
+        0.3067522644996643,
+        0.484205421525985,
+        0.817934412509203,
+        0.5094283693470061,
+        0.34747186047025025,
+        0.07375754183158278,
+        0.7663964673411101,
+        0.9968264393974096,
+        0.8250224851071835
+      ],
+      "next_gaussian": [
+        -0.07064807449259204,
+        0.49860719149527216,
+        -0.6676634049638013,
+        0.23482527217680943,
+        0.036207670102510664,
+        1.1748716014861296,
+        0.4724176279305982,
+        0.007121287323799363,
+        -0.41462251693801566,
+        0.4758430418785325
+      ]
+    }
+  ],
+  "gate_vectors": [
+    {
+      "name": "clean_two_vehicles",
+      "config": {
+        "v_max_ms": 22.22,
+        "a_max_ms2": 4.5,
+        "a_min_ms2": -6.5,
+        "max_dt_gap_s": 15.0,
+        "max_map_snap_dist_m": 12.0
+      },
+      "pings": [
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 0.0,
+          "x_obs_m": 0.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 10.0,
+          "x_obs_m": 100.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 20.0,
+          "x_obs_m": 200.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 0.0,
+          "x_obs_m": 0.0,
+          "y_obs_m": 500.0,
+          "speed_obs_ms": 15.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 15.0,
+          "x_obs_m": 225.0,
+          "y_obs_m": 500.0,
+          "speed_obs_ms": 15.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 30.0,
+          "x_obs_m": 450.0,
+          "y_obs_m": 500.0,
+          "speed_obs_ms": 15.0,
+          "snap_dist_m": 0.0
+        }
+      ],
+      "segments": [
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 0.0,
+          "tau_s": 0.0,
+          "d_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 10.0,
+          "tau_s": 10.0,
+          "d_m": 100.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 20.0,
+          "tau_s": 10.0,
+          "d_m": 100.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 0.0,
+          "tau_s": 0.0,
+          "d_m": 0.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 15.0,
+          "tau_s": 15.0,
+          "d_m": 225.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 30.0,
+          "tau_s": 15.0,
+          "d_m": 225.0
+        }
+      ],
+      "rejection_rate": 0.0,
+      "total_pings": 6,
+      "rejected_spatial": 0,
+      "rejected_kinematic": 0
+    },
+    {
+      "name": "outlier_spike",
+      "config": {
+        "v_max_ms": 22.22,
+        "a_max_ms2": 4.5,
+        "a_min_ms2": -6.5,
+        "max_dt_gap_s": 15.0,
+        "max_map_snap_dist_m": 12.0
+      },
+      "pings": [
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 0.0,
+          "x_obs_m": 0.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 5.0,
+          "x_obs_m": 50.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 6.0,
+          "x_obs_m": 100.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 11.0,
+          "x_obs_m": 100.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 12.0,
+          "x_obs_m": 110.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 13.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 16.0,
+          "x_obs_m": 140.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        }
+      ],
+      "segments": [
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 0.0,
+          "tau_s": 0.0,
+          "d_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 5.0,
+          "tau_s": 5.0,
+          "d_m": 50.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 11.0,
+          "tau_s": 6.0,
+          "d_m": 50.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "arterial",
+          "timestamp_s": 16.0,
+          "tau_s": 5.0,
+          "d_m": 40.0
+        }
+      ],
+      "rejection_rate": 0.3333333333333333,
+      "total_pings": 6,
+      "rejected_spatial": 1,
+      "rejected_kinematic": 1
+    },
+    {
+      "name": "gap_reset",
+      "config": {
+        "v_max_ms": 22.22,
+        "a_max_ms2": 4.5,
+        "a_min_ms2": -6.5,
+        "max_dt_gap_s": 15.0,
+        "max_map_snap_dist_m": 12.0
+      },
+      "pings": [
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 0.0,
+          "x_obs_m": 0.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 10.0,
+          "x_obs_m": 100.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 26.0,
+          "x_obs_m": 200.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 40.0,
+          "x_obs_m": 300.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 10.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 0.0,
+          "x_obs_m": 0.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": -1.0,
+          "snap_dist_m": 0.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 5.0,
+          "x_obs_m": 25.0,
+          "y_obs_m": 0.0,
+          "speed_obs_ms": 5.0,
+          "snap_dist_m": 0.0
+        }
+      ],
+      "segments": [
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 0.0,
+          "tau_s": 0.0,
+          "d_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 10.0,
+          "tau_s": 10.0,
+          "d_m": 100.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 26.0,
+          "tau_s": 0.0,
+          "d_m": 0.0
+        },
+        {
+          "veh_id": "veh_a",
+          "link_class": "local",
+          "timestamp_s": 40.0,
+          "tau_s": 14.0,
+          "d_m": 100.0
+        },
+        {
+          "veh_id": "veh_b",
+          "link_class": "local",
+          "timestamp_s": 5.0,
+          "tau_s": 0.0,
+          "d_m": 0.0
+        }
+      ],
+      "rejection_rate": 0.16666666666666666,
+      "total_pings": 6,
+      "rejected_spatial": 0,
+      "rejected_kinematic": 1
+    }
+  ]
+}
