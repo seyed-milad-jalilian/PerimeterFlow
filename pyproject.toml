@@ -1,4 +1,4 @@
-﻿# PerimeterFlow — virtual uv project.
+# PerimeterFlow — virtual uv project.
 #
 # This is deliberately a VIRTUAL project ([tool.uv] package = false): uv manages
 # and locks dependencies, but the package itself is never built or installed.

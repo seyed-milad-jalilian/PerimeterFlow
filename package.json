@@ -1,0 +1,11 @@
+﻿{
+  "name": "perimeterflow",
+  "private": true,
+  "type": "module",
+  "description": "Bias-aware MFD state estimation and latency-compensated perimeter control under sparse, non-uniform probes.",
+  "scripts": {
+    "test:parity": "npm --prefix web_worker run test",
+    "test:python": "uv run pytest tests/ -v",
+    "export-golden": "uv run python -m perimeterflow.cli export-golden data/golden/parity_vectors.json"
+  }
+}

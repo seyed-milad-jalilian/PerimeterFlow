@@ -1,0 +1,85 @@
+\documentclass[lettersize,journal]{IEEEtran}
+\usepackage{amsmath,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{booktabs}
+
+\input{generated_metrics.tex}
+
+\begin{document}
+
+\title{Bias-Aware MFD-Based Macroscopic Traffic State Estimation and Latency-Compensated Perimeter Control under Non-Uniform Sparse Probes}
+
+\author{Seyed Milad Jalilian
+\thanks{The author is with the Department of Civil, Construction, Architectural and Environmental Engineering, University of Naples Federico II, Italy (e-mail: contact@miladjalilian.me). Simulation artifacts and manifests are released under the open-source \textit{PerimeterFlow} platform under Git commit \texttt{\ArtifactGitSHA}.}}
+
+\markboth{IEEE Transactions on Intelligent Transportation Systems,~Preprint Technical Report}{Jalilian: Bias-Aware MFD Estimation and Perimeter Control}
+
+\maketitle
+
+\begin{abstract}
+Feedback perimeter control utilizing the Macroscopic Fundamental Diagram (MFD) is a scalable method to mitigate metropolitan congestion. However, empirical deployment is fundamentally constrained by sparse probe penetration ($1\%$--$5\%$), topological corridor selection bias, GPS multipath noise, and cloud pipeline communication latency. This work formulates an integrated estimation and control architecture comprising: (1) a stateful kinematic quality gate, (2) a stratified link-class Horvitz-Thompson Edie estimator coupled with a two-branch hysteresis adaptive Kalman filter (PC-AKF), and (3) a residual-corrected Smith-PI perimeter controller. Evaluated across an 8x8 two-reservoir SUMO grid across \EvalSeedCount{} evaluation seeds and validated against naturalistic drone trajectories from pNEUMA, the pipeline neutralizes corridor bias and maintains control loop stability. Artifact lifecycle status: \ArtifactStatus{}.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Macroscopic Fundamental Diagram, Perimeter Control, Kalman Filter, Sparse Probes, Spatial Bias, Latency Compensation.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\IEEEPARstart{U}{rban} traffic networks frequently experience non-linear capacity drop and catastrophic gridlock when vehicular accumulation exceeds critical density. Perimeter control regulates flow across reservoir boundaries to maintain accumulation near optimal production thresholds. Nevertheless, practical implementations rely on floating vehicle data exhibiting low penetration and severe spatial bias---clustering along high-speed corridors while leaving local streets unmonitored.
+
+Furthermore, cloud message buffering and batch inference introduce telemetry latency $\tau_d \in [30\text{s}, 60\text{s}]$, which introduces destructive phase delay in standard proportional-integral (PI) controllers. This paper introduces \textit{PerimeterFlow}, an open-source research and simulation engine formulated to overcome these compounding constraints without requiring high-density inductive loop detectors. The research question, hypotheses (H1--H4), and seed partitioning are pre-registered in the repository's \texttt{ANALYSIS\_PLAN.md} prior to any execution.
+
+\section{Methodology}
+\subsection{Stateful Kinematic Quality Gate}
+Raw probe pings $p_k = (t_k, x_k, y_k, v_k)$ are sequentially filtered against the last accepted valid anchor state $(\tilde{t}, \tilde{x}, \tilde{y}, \tilde{v})$ of that specific vehicle:
+\begin{equation}
+v_{\text{calc}} = \frac{\sqrt{(x_k - \tilde{x})^2 + (y_k - \tilde{y})^2}}{t_k - \tilde{t}}, \quad a_{\text{calc}} = \frac{v_{\text{calc}} - \tilde{v}}{t_k - \tilde{t}}
+\end{equation}
+Observations exceeding physical bounds ($v_{\text{calc}} > 22.2\text{ m/s}$, $a_{\text{calc}} \notin [-6.5, 4.5]\text{ m/s}^2$) are rejected without corrupting the anchor state, ensuring subsequent true pings remain preserved.
+
+\subsection{Stratified Horvitz-Thompson Estimator}
+To correct for corridor over-representation, link classes $c \in \{\text{art}, \text{loc}\}$ with lane-length $L_c$ are weighted by inverse boundary-anchored class penetration $\hat{p}_c$:
+\begin{equation}
+\hat{N}(t) = \frac{1}{\Delta t} \sum_{c} \frac{1}{\max(\hat{p}_c, p_{\min})} \sum_{i \in \mathcal{P}_c(t)} \tau_i^{\text{gated}}(t)
+\end{equation}
+
+\subsection{Hysteresis PC-AKF and Residual Smith-PI Control}
+Vehicle accumulation is assimilated using a two-branch hysteresis production model $\Phi(N_t, \text{is\_unloading})$. Observation noise covariance is dynamically inflated using gate rejection rate $\rho_{\text{rej}}(t)$:
+\begin{equation}
+R_t = R_0 \left(\frac{p_{\text{ref}}}{\hat{p}_{\text{eff}}(t)}\right) \exp\left(\alpha_{\text{gate}} \rho_{\text{rej}}(t)\right)
+\end{equation}
+To eliminate pipeline delay $\tau_d = d \cdot \Delta t$, a Smith predictor simulates forward rollout over past boundary actuations, applying model residual feedback $\delta_{t-d} = \hat{N}_{\text{AKF}}(t-d) - N_{\text{model}}(t-d)$ to govern normalized dimensionless gating control $u(t) \in [u_{\min}, 1.0]$.
+
+\section{Experimental Protocol}
+Simulations are conducted on an $8 \times 8$ two-reservoir SUMO grid with a 90-minute hysteresis demand profile. Per pre-registered plan \texttt{ANALYSIS\_PLAN.md}, calibration seeds 1--10 are utilized for parameter tuning, whereas evaluation seeds 11--40 ($n=\EvalSeedCount$) are held out for paired non-parametric inference. Metric comparisons report Hodges-Lehmann median difference ($\hat{\Delta}_{\text{HL}}$) and Cliff's delta ($\delta$) with Holm-Bonferroni correction at $\alpha = 0.05$.
+
+\section{Results and Discussion}
+\begin{table}[htbp]
+\caption{Pre-Registered Evaluation Results Across $n=\EvalSeedCount$ Held-Out Seeds (status: \ArtifactStatus)}
+\label{tab:results}
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Pipeline Variant & $\text{NRMSE}(N)$ & $\text{TND } [\text{veh}\cdot\text{h}]$ & Cliff's $\delta$ & Holm $p$ \\
+\midrule
+Unfiltered + Tuned PI & \MetricNRMSEBaseline & \MetricTNDBaseline & Baseline & --- \\
+Proposed Smith-PI & \MetricNRMSESmith & \MetricTNDSmith & \MetricCliffsDelta & \MetricHolmP \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Limitations and Threats to Validity}
+While the framework preserves stability under latency, closed-loop gating cannot be actuated on offline naturalistic drone logs (pNEUMA). Furthermore, boundary loop detectors remain necessary to calibrate penetration rates $\hat{p}_c$. Future work within the doctoral program will extend the formulation to multi-modal passenger-weighted MFDs and decentralized multi-region gating.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

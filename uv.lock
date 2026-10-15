@@ -21,6 +21,22 @@ wheels = [
 ]
 
 [[package]]
+name = "eclipse-sumo"
+version = "1.28.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sumo-data" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/3d/a05bfded39ae2edfec9bf49b1f1bef1ba40b3dde7f7c661c4a1300949e2f/eclipse_sumo-1.28.0-py3-none-macosx_15_0_arm64.whl", hash = "sha256:bf9babaa01976356255a91a7fe715b285663c22fd6035b19bfb7e9bf46fff348", size = 54963592, upload-time = "2026-10-08T09:29:17.557Z" },
+    { url = "https://files.pythonhosted.org/packages/5b/f2/af4d92d3f415f1a54286e80525db8366a459b959ba1786410641ceda6021/eclipse_sumo-1.28.0-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:8af54645cf25e28eeed5e359256e470a87b8c039e54f25027edfccd194bb3561", size = 78718270, upload-time = "2026-10-08T09:29:22.795Z" },
+    { url = "https://files.pythonhosted.org/packages/43/c6/16c5ac778c77dde18c7c1a55425128fcd16a5ca33b16184f6f9d98be8835/eclipse_sumo-1.28.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:8d96fb90562085524d24cccbb884853e70ee2f0ceb6464d0c055be9f9506240c", size = 90369620, upload-time = "2026-10-08T09:29:28.137Z" },
+    { url = "https://files.pythonhosted.org/packages/20/e5/080446da257fe3366adf02dfe7c22cb9442d9777672a60b5c2f504eca5ef/eclipse_sumo-1.28.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:7e94b2da13d20eb4e31b76fcbca9101ec798fb71efee0ca1c0b28ec3e1d0c1a1", size = 127791557, upload-time = "2026-10-08T09:29:34.341Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/12/b37bcb407bdfe811e1a38179b4abc3142290e589104a33a8f88a3e661eb0/eclipse_sumo-1.28.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:ec7042794e5ab1d806b90a5983aeda4a978dc4224141b94c0ff3affeeb4ec977", size = 148526232, upload-time = "2026-10-08T09:29:41.344Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/58/9f46c983b516d758065d99bcffe26ebd196f2529470c904f6835580a345a/eclipse_sumo-1.28.0-py3-none-win_amd64.whl", hash = "sha256:c8c898237d0a98f7f87ae762195a62114baca7b54394a430a06bbfc166145aa8", size = 158043683, upload-time = "2026-10-08T09:29:49.08Z" },
+]
+
+[[package]]
 name = "hypothesis"
 version = "6.169.4"
 source = { registry = "https://pypi.org/simple" }
@@ -155,16 +171,22 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+sumo = [
+    { name = "eclipse-sumo" },
+    { name = "traci" },
+]
 
 [package.metadata]
 requires-dist = [
+    { name = "eclipse-sumo", marker = "extra == 'sumo'" },
     { name = "hypothesis", marker = "extra == 'dev'" },
     { name = "jsonschema", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pyyaml" },
     { name = "ruff", marker = "extra == 'dev'" },
+    { name = "traci", marker = "extra == 'sumo'" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "sumo"]
 
 [[package]]
 name = "pluggy"
@@ -400,6 +422,37 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e8/c4/ba2f8066cceb6f23394729afe52f3bf7adec04bf9ed2c820b39e19299111/sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88", size = 30594, upload-time = "2021-05-16T22:03:42.897Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/32/46/9cb0e58b2deb7f82b84065f37f3bffeb12413f947f9388e4cac22c4621ce/sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0", size = 29575, upload-time = "2021-05-16T22:03:41.177Z" },
+]
+
+[[package]]
+name = "sumo-data"
+version = "1.28.0"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/35/69/5272a2b8a88034fe2adea6869a04eb555695f257292c68593dd6226f5e01/sumo_data-1.28.0-py3-none-any.whl", hash = "sha256:1f934259d328ed42d12ae0852bae654c79457debbf68b51406aa817c2088b037", size = 16345159, upload-time = "2026-10-08T09:33:18.063Z" },
+    { url = "https://files.pythonhosted.org/packages/d5/95/8c5650c55da61caab4282bceec8a2c475a57ffb1fa6672799161464dbf22/sumo_data-1.28.0-py3-none-macosx_15_0_arm64.whl", hash = "sha256:6d488fba4f9f0398964dae165c32a21545a1cde71cde1755cca0ab398ec6a8f6", size = 120801605, upload-time = "2026-10-08T09:33:28.388Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/44/28876275739735594db402e23ff9d190fee6d30634e77ba47fe476135b30/sumo_data-1.28.0-py3-none-win_amd64.whl", hash = "sha256:48120c1b0174fe7af69a5711d936fc4d3b6d41f28e48326602d7d6d6b6efcc42", size = 116048875, upload-time = "2026-10-08T09:33:34.732Z" },
+]
+
+[[package]]
+name = "sumolib"
+version = "1.28.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/06/87b2ece00c650531e3f776a809982e488a8f6a4dd109d7e810381c5d1583/sumolib-1.28.0.tar.gz", hash = "sha256:8547d6c699a9a97c00a539869f58676f7d8c70afa06a965b4af7f8a870739177", size = 142390, upload-time = "2026-10-08T09:33:39.811Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/3c/bb2ba08247793748be59bf93759d1452ed1201e6f143dc98fc51511c87d4/sumolib-1.28.0-py2.py3-none-any.whl", hash = "sha256:eda134defdcc39b966756cc00828ecbabfc35e0631326971f2fe1dea8acd9239", size = 236390, upload-time = "2026-10-08T09:33:37.547Z" },
+]
+
+[[package]]
+name = "traci"
+version = "1.28.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sumolib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/04/f7/43e04a40da868af0fdc767d417ea27b89958d3b2ec0ae2de0860519e10f9/traci-1.28.0.tar.gz", hash = "sha256:f53483a7f3a15910b88579cfb4c72a8e304364e58a2b3f0a1acbcf460598c6b3", size = 103837, upload-time = "2026-10-08T10:42:32.77Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9a/a1/a95328ff82da409b46d5ed2723b70dff6a5445776ad95c34b5d1a84de7f2/traci-1.28.0-py2.py3-none-any.whl", hash = "sha256:cbc88b5b38b60c0dba4939f9171615a97bd12dd113c5bc7730d76dfe2db73881", size = 139433, upload-time = "2026-10-08T09:33:38.705Z" },
 ]
 
 [[package]]
