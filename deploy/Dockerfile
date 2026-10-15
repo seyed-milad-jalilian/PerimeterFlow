@@ -1,6 +1,5 @@
 FROM python:3.12-slim-bookworm
 
-# Install SUMO headless binary and system libraries
 RUN apt-get update && apt-get install -y --no-install-recommends \
     sumo \
     sumo-tools \
@@ -10,24 +9,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ENV SUMO_HOME=/usr/share/sumo
 ENV PYTHONUNBUFFERED=1
-# The repository is a virtual uv project (never built/installed); the package
-# is imported directly from src/.
-ENV PYTHONPATH=/app/src
 
 WORKDIR /app
 
-# Non-root user enforcement
 RUN groupadd -g 10001 perimeter && \
     useradd -u 10001 -g perimeter -s /bin/bash -m perimeter
 
-# Locked dependency install first for layer caching.
-COPY pyproject.toml uv.lock ./
-RUN pip install --no-cache-dir uv && \
-    uv export --format requirements-txt --no-dev --no-emit-project -o /tmp/requirements.txt && \
-    pip install --no-cache-dir -r /tmp/requirements.txt
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+RUN pip install --no-cache-dir .
 
-COPY . .
-RUN chown -R perimeter:perimeter /app
+COPY configs/ ./configs/
+COPY data/ ./data/
+COPY report/ ./report/
+RUN mkdir -p /app/results && chown -R perimeter:perimeter /app
 
 USER 10001
 

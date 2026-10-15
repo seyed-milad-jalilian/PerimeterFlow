@@ -24,10 +24,9 @@ spec:
           image: ghcr.io/seyed-milad-jalilian/perimeterflow:latest
           command: ["python", "-m", "perimeterflow.cli"]
           args:
-            - "worker"
+            - "--mode=worker"
             - "--seed-offset=11"
-            - "--config=configs/evaluate_seeds.yaml"
-            - "--params=results/calibrated_params.json"
+            - "--worker-out-dir=/out"
           env:
             - name: JOB_INDEX
               valueFrom:
