@@ -1,0 +1,22 @@
+# Citation File Format metadata for the PerimeterFlow repository.
+# Schema: Citation File Format (CFF), cff-version 1.2.0.
+#
+# INTENTIONAL OMISSION: the CFF specification normally requires a `version`
+# field for software entries. Project rules forbid assigning any version
+# numbers anywhere in this repository, so `version` (and the related
+# `date-released`) is deliberately omitted here. The canonical citation
+# identity of a checkout is its Git commit hash, not a release tag.
+cff-version: 1.2.0
+message: "If you use PerimeterFlow in your research, please cite this software."
+type: software
+title: PerimeterFlow
+authors:
+  - family-names: Jalilian
+    given-names: Seyed Milad
+repository-code: "https://github.com/seyed-milad-jalilian/perimeterflow"
+keywords:
+  - macroscopic fundamental diagram
+  - perimeter control
+  - traffic state estimation
+  - sparse probe data
+  - Kalman filter

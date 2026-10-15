@@ -1,0 +1,40 @@
+# PerimeterFlow — EVALUATION configuration (held-out seeds).
+#
+# Seeds 11..40 are the pre-registered evaluation partition (n = 30). Every
+# controller gain, filter hyperparameter, and reference MFD parameter must be
+# FROZEN before the first evaluation episode starts. All statistical tests,
+# tables, and figures reported by the project are computed exclusively from
+# these 30 seeds — never from configs/calibrate_seeds.yaml.
+#
+# Integrity contract (docs/ANALYSIS_PLAN.md):
+#   * parameters frozen prior to running seeds 11..40,
+#   * paired non-parametric inference (Hodges-Lehmann, Cliff's delta,
+#     Wilcoxon signed-rank with Holm-Bonferroni correction),
+#   * artifacts carry "status": "planned" with null metrics until real runs
+#     complete and are independently reproduced.
+
+role: evaluation
+
+# Held-out evaluation partition only (pre-registered, n = 30).
+seeds: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+        21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+        31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
+
+# Episode geometry: 5400 s episode discretized into 60 s windows
+# (90 windows per episode, matching the pre-registered NRMSE definition).
+episode_length_s: 5400
+dt_window_s: 60
+
+# Reference condition defaults. The pre-registered condition matrix varies
+# penetration (1%..10%), bias mode (uniform, corridor_biased), and pipeline
+# delay (0 s, 30 s, 60 s); the CLI enumerates the matrix over these seeds.
+penetration_rate: 0.05
+bias_mode: corridor_biased
+delay_s: 0
+
+# Misspecification factors (1.0 = reference model at face value).
+# The evaluation matrix sweeps these to the pre-registered robustness
+# envelopes: MFD parameters +/-20%, penetration estimate +/-30%.
+mfd_ncrit_factor: 1.0
+mfd_mmax_factor: 1.0
+penetration_estimation_factor: 1.0

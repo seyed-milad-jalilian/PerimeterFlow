@@ -1,0 +1,36 @@
+# PerimeterFlow — CALIBRATION configuration.
+#
+# Seeds 1..10 are reserved STRICTLY for calibration work: fitting baseline
+# reference MFD curves, selecting the filter hyperparameter alpha_gate, and
+# tuning (Kp, Ki) gains for the baseline PI and the Smith-PI controllers.
+# Per docs/ANALYSIS_PLAN.md, these seeds must NEVER be used for reported
+# evaluation statistics; see configs/evaluate_seeds.yaml for the held-out set.
+#
+# Condition values below are reference defaults. The full pre-registered
+# condition matrix (penetration levels, bias modes, delay regimes) is
+# enumerated by the experiment CLI; this file pins the seed partition and
+# the episode geometry so every calibration run shares one protocol.
+
+role: calibration
+
+# Calibration partition only (pre-registered, n = 10).
+seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+# Episode geometry: 5400 s episode discretized into 60 s windows
+# (90 windows per episode, matching the pre-registered NRMSE definition).
+episode_length_s: 5400
+dt_window_s: 60
+
+# Reference condition defaults (the hard, corridor-biased case is the
+# calibration target because it stresses the stratified estimator most).
+penetration_rate: 0.05
+bias_mode: corridor_biased
+delay_s: 0
+
+# Misspecification factors (1.0 = reference model used at face value).
+# Calibration runs use the reference model; misspecification robustness
+# (MFD parameters +/-20%, penetration estimate +/-30%) is an evaluation-phase
+# condition defined by the pre-registered plan.
+mfd_ncrit_factor: 1.0
+mfd_mmax_factor: 1.0
+penetration_estimation_factor: 1.0

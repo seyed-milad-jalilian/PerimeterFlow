@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MFDExperimentArtifact",
+  "type": "object",
+  "required": ["meta", "summary_table", "ablation_comparisons"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": [
+        "artifact_id", "run_id", "git_sha", "config_sha256",
+        "data_sha256", "generated_at_utc", "status", "mode",
+        "calibration_seeds", "evaluation_seeds", "license"
+      ],
+      "properties": {
+        "artifact_id": { "type": "string" },
+        "run_id": { "type": "string" },
+        "git_sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "config_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "data_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "generated_at_utc": { "type": "string", "format": "date-time" },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "running", "results-unreviewed", "reproduced-in-ci"]
+        },
+        "mode": { "type": "string", "enum": ["replay", "simulation"] },
+        "calibration_seeds": { "type": "array", "items": { "type": "integer" } },
+        "evaluation_seeds": { "type": "array", "items": { "type": "integer" } },
+        "license": { "type": "string" }
+      }
+    },
+    "summary_table": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "condition_id", "penetration_rate", "bias_mode", "delay_s",
+          "variant", "n_seeds", "nrmse_median_pct", "nrmse_iqr_pct",
+          "tnd_median_veh_h", "tnd_iqr_veh_h"
+        ],
+        "properties": {
+          "condition_id": { "type": "string" },
+          "penetration_rate": { "type": "number" },
+          "bias_mode": { "enum": ["uniform", "corridor_biased"] },
+          "delay_s": { "type": "integer" },
+          "variant": { "type": "string" },
+          "n_seeds": { "type": "integer", "minimum": 0 },
+          "nrmse_median_pct": { "type": ["number", "null"] },
+          "nrmse_iqr_pct": { "type": ["number", "null"] },
+          "tnd_median_veh_h": { "type": ["number", "null"] },
+          "tnd_iqr_veh_h": { "type": ["number", "null"] }
+        }
+      }
+    },
+    "ablation_comparisons": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "comparison_id", "baseline_variant", "proposed_variant",
+          "metric_unit", "hl_median_diff", "ci95_low", "ci95_high",
+          "cliffs_delta", "p_value_raw", "p_value_holm"
+        ],
+        "properties": {
+          "comparison_id": { "type": "string" },
+          "baseline_variant": { "type": "string" },
+          "proposed_variant": { "type": "string" },
+          "metric_unit": { "type": "string" },
+          "hl_median_diff": { "type": ["number", "null"] },
+          "ci95_low": { "type": ["number", "null"] },
+          "ci95_high": { "type": ["number", "null"] },
+          "cliffs_delta": { "type": ["number", "null"] },
+          "p_value_raw": { "type": ["number", "null"] },
+          "p_value_holm": { "type": ["number", "null"] }
+        }
+      }
+    }
+  }
+}

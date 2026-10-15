@@ -1,0 +1,33 @@
+# PerimeterFlow — virtual uv project.
+#
+# This is deliberately a VIRTUAL project ([tool.uv] package = false): uv manages
+# and locks dependencies, but the package itself is never built or installed.
+# Tests import the package directly from src/ via [tool.pytest.ini_options].
+#
+# By project rule, NO version field is assigned anywhere in this file.
+
+[project]
+name = "perimeterflow"
+# PEP 621 demands `version` or an explicit dynamic declaration; per project
+# rules no version number is assigned anywhere, so version is declared
+# dynamic and never given a value (the project is virtual and never built).
+dynamic = ["version"]
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "jsonschema",
+    "hypothesis",
+    "ruff",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

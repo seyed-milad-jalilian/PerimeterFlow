@@ -1,0 +1,33 @@
+# PerimeterFlow — SMOKE-TEST configuration ("small repro").
+#
+# PURPOSE: a fast, laptop-scale dry run that verifies the full experiment
+# plumbing (network generation, closed-loop TraCI episode, estimation stack,
+# control loop, artifact export) in a few minutes. This is a PLUMBING test.
+#
+# THIS CONFIG MUST NEVER BE USED FOR EMPIRICAL CLAIMS:
+#   * the episode is deliberately shortened below the pre-registered 5400 s,
+#   * only two seeds are run, drawn exclusively from the calibration
+#     partition (never from the held-out evaluation set),
+#   * zero pipeline delay and no misspecification are applied.
+# Any numeric output produced with this file is a sanity check only and must
+# stay out of every table, figure, and report.
+
+role: smoke_test
+
+# Two seeds from the calibration partition only (see configs/calibrate_seeds.yaml).
+seeds: [1, 2]
+
+# Reduced episode length for the smoke test ONLY (pre-registered episodes
+# are 5400 s; the shortened horizon simply bounds wall-clock time).
+episode_length_s: 1800
+dt_window_s: 60
+
+# Condition: mid-range penetration, unbiased sampling, no pipeline latency.
+penetration_rate: 0.05
+bias_mode: uniform
+delay_s: 0
+
+# Misspecification factors (1.0 = reference model at face value).
+mfd_ncrit_factor: 1.0
+mfd_mmax_factor: 1.0
+penetration_estimation_factor: 1.0
