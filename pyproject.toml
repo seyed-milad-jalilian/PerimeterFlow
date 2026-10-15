@@ -1,4 +1,4 @@
-# PerimeterFlow — virtual uv project.
+﻿# PerimeterFlow — virtual uv project.
 #
 # This is deliberately a VIRTUAL project ([tool.uv] package = false): uv manages
 # and locks dependencies, but the package itself is never built or installed.
@@ -23,6 +23,15 @@ dev = [
     "jsonschema",
     "hypothesis",
     "ruff",
+]
+# Optional closed-loop simulation stack (SUMO + TraCI). These are NEVER
+# required for tests or the pure-Python replay pipeline; install explicitly
+# with `uv sync --extra sumo` on machines where the eclipse-sumo wheel is
+# wanted. `network_gen` and `traci_runner` import traci/sumolib lazily inside
+# functions and degrade gracefully when SUMO is absent.
+sumo = [
+    "eclipse-sumo",
+    "traci",
 ]
 
 [tool.uv]
