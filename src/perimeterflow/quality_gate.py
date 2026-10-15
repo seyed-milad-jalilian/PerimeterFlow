@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import math
 from typing import Iterable
 
+
 @dataclass(frozen=True)
 class GateConfig:
     v_max_ms: float = 22.22           # 80 km/h urban speed ceiling
@@ -9,6 +10,7 @@ class GateConfig:
     a_min_ms2: float = -6.5           # Max plausible emergency deceleration
     max_dt_gap_s: float = 15.0        # Segment reset gap threshold
     max_map_snap_dist_m: float = 12.0 # Max perpendicular distance to road axis
+
 
 @dataclass(frozen=True)
 class ProbePing:
@@ -20,6 +22,7 @@ class ProbePing:
     speed_obs_ms: float
     snap_dist_m: float
 
+
 @dataclass(frozen=True)
 class AcceptedSegment:
     veh_id: str
@@ -27,6 +30,7 @@ class AcceptedSegment:
     timestamp_s: float
     tau_s: float                      # Valid travel time increment
     d_m: float                        # Valid travel distance increment
+
 
 @dataclass(frozen=True)
 class GateSummary:
@@ -36,12 +40,14 @@ class GateSummary:
     rejected_spatial: int
     rejected_kinematic: int
 
+
 @dataclass
 class _VehAnchor:
     t: float
     x: float
     y: float
     v: float
+
 
 def run_stateful_quality_gate(pings: Iterable[ProbePing], cfg: GateConfig = GateConfig()) -> GateSummary:
     """
@@ -52,7 +58,7 @@ def run_stateful_quality_gate(pings: Iterable[ProbePing], cfg: GateConfig = Gate
     sorted_pings = sorted(pings, key=lambda p: (p.veh_id, p.timestamp_s))
     anchors: dict[str, _VehAnchor] = {}
     accepted: list[AcceptedSegment] = []
-    
+
     total = 0
     rej_spatial = 0
     rej_kinematic = 0
@@ -83,7 +89,6 @@ def run_stateful_quality_gate(pings: Iterable[ProbePing], cfg: GateConfig = Gate
 
         if (v_calc < 0.0) or (v_calc > cfg.v_max_ms) or (a_calc > cfg.a_max_ms2) or (a_calc < cfg.a_min_ms2):
             rej_kinematic += 1
-            # Anchor is preserved; rejected ping does not shift kinematic reference
             continue
 
         anchors[p.veh_id] = _VehAnchor(p.timestamp_s, p.x_obs_m, p.y_obs_m, v_calc)

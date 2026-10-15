@@ -2,10 +2,13 @@ from dataclasses import dataclass
 import math
 from .quality_gate import AcceptedSegment
 
+
 @dataclass(frozen=True)
 class NetworkClassSpec:
     length_km: float
     estimated_penetration: float
+    observed_length_km: float | None = None
+
 
 def compute_stratified_edie(
     segments: list[AcceptedSegment],
@@ -15,11 +18,14 @@ def compute_stratified_edie(
 ) -> tuple[float, float, float]:
     """
     Stratified Link-Class Horvitz-Thompson Edie Estimator.
+    Implements exact class length scaling (L_c / L_c^obs) and inverse penetration weighting.
     Returns: (k_hat_veh_km, q_hat_veh_h, N_hat_veh)
     """
     total_length_km = sum(spec.length_km for spec in class_specs.values())
     if total_length_km <= 0.0:
-        raise ValueError("Total network length must be positive")
+        raise ValueError("Total network length must be strictly positive")
+    if dt_window_s <= 0.0:
+        raise ValueError("Time window dt_window_s must be strictly positive")
 
     tau_by_class: dict[str, float] = {c: 0.0 for c in class_specs}
     d_by_class: dict[str, float] = {c: 0.0 for c in class_specs}
@@ -35,8 +41,11 @@ def compute_stratified_edie(
 
     for c, spec in class_specs.items():
         p_c = max(spec.estimated_penetration, p_min)
-        total_veh_hours_c = (tau_by_class[c] / 3600.0) / p_c
-        total_veh_km_c = d_by_class[c] / p_c
+        l_obs = spec.observed_length_km if (spec.observed_length_km is not None and spec.observed_length_km > 0.0) else spec.length_km
+        spatial_scale = spec.length_km / l_obs
+
+        total_veh_hours_c = spatial_scale * (tau_by_class[c] / 3600.0) / p_c
+        total_veh_km_c = spatial_scale * d_by_class[c] / p_c
 
         n_hat_total += total_veh_hours_c / dt_hours
         weighted_flow_sum += total_veh_km_c / dt_hours
@@ -61,17 +70,19 @@ class HysteresisAwarePCAKF:
         q_var: float = 20.0,
         r_base: float = 120.0,
         alpha_gate: float = 2.5,
+        p_ref: float = 0.05,
     ):
         self.n_est = float(n_init)
         self.n_prev = float(n_init)
         self.p_cov = 80.0
-        self.n_crit = n_crit
-        self.n_jam = n_jam
-        self.m_max_load = m_max_load
-        self.m_max_unload = m_max_load * hysteresis_drop_ratio
-        self.q_var = q_var
-        self.r_base = r_base
-        self.alpha_gate = alpha_gate
+        self.n_crit = float(n_crit)
+        self.n_jam = float(n_jam)
+        self.m_max_load = float(m_max_load)
+        self.m_max_unload = float(m_max_load) * float(hysteresis_drop_ratio)
+        self.q_var = float(q_var)
+        self.r_base = float(r_base)
+        self.alpha_gate = float(alpha_gate)
+        self.p_ref = float(p_ref)
 
     def mfd_outflow(self, n_val: float, is_unloading: bool = False) -> float:
         n_c = max(0.0, min(n_val, self.n_jam))
@@ -102,11 +113,11 @@ class HysteresisAwarePCAKF:
         self.n_prev = self.n_est
         if z_obs_n is None or math.isnan(z_obs_n) or p_eff <= 0.001 or rejection_rate >= 0.95:
             self.n_est = n_pred
-            self.p_cov = p_pred
+            self.p_cov = max(1e-6, p_pred)
             return self.n_est
 
-        r_t = self.r_base * (0.05 / max(p_eff, 0.005)) * math.exp(self.alpha_gate * rejection_rate)
+        r_t = self.r_base * (self.p_ref / max(p_eff, 0.005)) * math.exp(self.alpha_gate * rejection_rate)
         k_gain = p_pred / (p_pred + r_t)
         self.n_est = max(0.0, min(n_pred + k_gain * (z_obs_n - n_pred), self.n_jam))
-        self.p_cov = (1.0 - k_gain) * p_pred
+        self.p_cov = max(1e-6, (1.0 - k_gain) * p_pred)
         return self.n_est

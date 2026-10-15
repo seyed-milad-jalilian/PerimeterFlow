@@ -258,7 +258,9 @@ export interface ResidualCorrectedSmithPIControllerParams {
   readonly kp_norm?: number;
   readonly ki_norm?: number;
   readonly u_min?: number;
+  readonly u_max?: number;
   readonly delay_steps?: number;
+  readonly residual_gain?: number;
 }
 
 export class ResidualCorrectedSmithPIController {
@@ -266,7 +268,9 @@ export class ResidualCorrectedSmithPIController {
   readonly kp_norm: number;
   readonly ki_norm: number;
   readonly u_min: number;
+  readonly u_max: number;
   readonly delay_steps: number;
+  readonly residual_gain: number;
   u_prev: number;
   err_prev: number;
   readonly actuation_history: Array<readonly [number, number]>;
@@ -277,7 +281,9 @@ export class ResidualCorrectedSmithPIController {
     this.kp_norm = params.kp_norm ?? 0.85;
     this.ki_norm = params.ki_norm ?? 0.22;
     this.u_min = params.u_min ?? 0.15;
+    this.u_max = params.u_max ?? 1.0;
     this.delay_steps = Math.max(0, Math.trunc(params.delay_steps ?? 0));
+    this.residual_gain = params.residual_gain ?? 0.5;
     this.u_prev = 1.0;
     this.err_prev = 0.0;
     this.actuation_history = [];
@@ -291,13 +297,15 @@ export class ResidualCorrectedSmithPIController {
     kf_model: HysteresisAwarePCAKF,
     dt_s: number = 60.0
   ): number {
+    let n_rollout: number;
     let n_effective: number;
     if (this.delay_steps === 0 || this.actuation_history.length === 0) {
+      n_rollout = n_delayed_obs;
       n_effective = n_delayed_obs;
     } else {
-      let n_rollout = n_delayed_obs;
+      n_rollout = n_delayed_obs;
       for (const [past_q_in, past_u] of this.actuation_history) {
-        const outflow = kf_model.mfdOutflow(n_rollout);
+        const outflow = kf_model.mfdOutflow(n_rollout, false);
         n_rollout = Math.max(
           0.0,
           Math.min(n_rollout + dt_s * (past_q_in * past_u - outflow), kf_model.n_jam)
@@ -306,19 +314,22 @@ export class ResidualCorrectedSmithPIController {
 
       const n_model_delayed = this.model_pred_history[0];
       const residual = n_delayed_obs - n_model_delayed;
-      n_effective = Math.max(0.0, Math.min(n_rollout + 0.5 * residual, kf_model.n_jam));
+      n_effective = Math.max(
+        0.0,
+        Math.min(n_rollout + this.residual_gain * residual, kf_model.n_jam)
+      );
     }
 
     const err_t = (n_effective - this.n_crit) / this.n_crit;
     const delta_u = -this.kp_norm * (err_t - this.err_prev) - this.ki_norm * err_t;
-    const u_new = Math.max(this.u_min, Math.min(1.0, this.u_prev + delta_u));
+    const u_new = Math.max(this.u_min, Math.min(this.u_max, this.u_prev + delta_u));
 
     if (this.delay_steps > 0) {
       this.actuation_history.push([q_in_current, u_new]);
       while (this.actuation_history.length > this.delay_steps) {
         this.actuation_history.shift();
       }
-      this.model_pred_history.push(n_effective);
+      this.model_pred_history.push(n_rollout);
       while (this.model_pred_history.length > this.delay_steps + 1) {
         this.model_pred_history.shift();
       }

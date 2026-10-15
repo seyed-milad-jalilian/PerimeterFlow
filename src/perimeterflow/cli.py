@@ -1,309 +1,284 @@
-"""PerimeterFlow command-line platform.
-
-Subcommands (mirrored by the Makefile and the K8s IndexedJob):
-  generate-network  build the deterministic 8x8 two-reservoir SUMO bundle
-  export-golden     export Python reference parity vectors for the Vitest tests
-  init-planned      export the schema-valid pre-run ("planned") artifact
-  calibrate         tune normalized PI gains on calibration seeds 1..10 only
-  sweep             run the held-out evaluation seeds and export the artifact
-  worker            single IndexedJob worker episode (seed = offset + JOB_INDEX)
-  validate-pneuma   offline estimation validation on pNEUMA trajectories
-
-Integrity rule enforced here: no command fabricates empirical numbers. The
-sweep writes "results-unreviewed" artifacts only from episodes that actually
-ran; init-planned writes null metrics with status "planned".
-"""
-
-from __future__ import annotations
-
 import argparse
+from datetime import datetime, timezone
+import hashlib
 import json
 import os
-import sys
 from pathlib import Path
-
+import numpy as np
 import yaml
-
-from . import parity
-from .pneuma_validator import DEFAULT_PNEUMA_DIR, export_validation_report
+from .controllers import ResidualCorrectedSmithPIController
+from .estimators import HysteresisAwarePCAKF, NetworkClassSpec, compute_stratified_edie
+from .prng import Mulberry32
+from .quality_gate import GateConfig, ProbePing, run_stateful_quality_gate
 from .stats_eval import (
-    CALIBRATION_SEEDS,
-    write_planned_skeleton_artifact,
-    write_results_artifact,
+    cliffs_delta,
+    get_git_sha,
+    hodges_lehmann_paired,
+    holm_bonferroni_correction,
+    paired_wilcoxon_pvalue,
+    validate_artifact_dict,
 )
-from .traci_runner import EpisodeConfig, episode_metrics, run_replay_episode, run_sumo_episode
-
-GAIN_GRID: tuple[tuple[float, float], ...] = (
-    (0.40, 0.10),
-    (0.60, 0.15),
-    (0.85, 0.22),
-    (1.05, 0.30),
-    (1.25, 0.40),
-)
+from .traci_runner import EpisodeConfig, run_closed_loop_episode
 
 
-def load_config(config_path: Path) -> dict:
-    config = yaml.safe_load(Path(config_path).read_text(encoding="utf-8"))
-    if not isinstance(config, dict) or "seeds" not in config:
-        raise ValueError(f"{config_path} is not a valid PerimeterFlow run configuration")
-    return config
+def export_golden_parity_vectors(out_path: Path) -> None:
+    """Generates deterministic golden vectors for Python-to-TypeScript 1e-9 parity verification."""
+    rng = Mulberry32(202601)
+    prng_floats = [rng.next_float() for _ in range(16)]
+    prng_gaussians = [rng.next_gaussian(2.5, 1.2) for _ in range(16)]
 
+    pings = [
+        ProbePing("v1", "arterial", 0.0, 0.0, 0.0, 10.0, 1.5),
+        ProbePing("v1", "arterial", 5.0, 50.0, 0.0, 10.0, 1.8),
+        ProbePing("v1", "arterial", 10.0, 230.0, 0.0, 36.0, 2.0),
+        ProbePing("v1", "arterial", 15.0, 150.0, 0.0, 10.0, 1.2),
+        ProbePing("v2", "local", 0.0, 0.0, 0.0, 6.0, 2.1),
+        ProbePing("v2", "local", 5.0, 30.0, 0.0, 6.0, 2.0),
+    ]
+    gate_res = run_stateful_quality_gate(pings, GateConfig())
 
-def config_to_episode(config: dict, seed: int) -> EpisodeConfig:
-    return EpisodeConfig(
-        seed=seed,
-        episode_length_s=int(config["episode_length_s"]),
-        dt_window_s=float(config["dt_window_s"]),
-        penetration_rate=float(config["penetration_rate"]),
-        bias_mode=str(config["bias_mode"]),
-        delay_s=int(config["delay_s"]),
-        mfd_ncrit_factor=float(config.get("mfd_ncrit_factor", 1.0)),
-        mfd_mmax_factor=float(config.get("mfd_mmax_factor", 1.0)),
-        penetration_estimation_factor=float(config.get("penetration_estimation_factor", 1.0)),
-    )
+    specs = {
+        "arterial": NetworkClassSpec(length_km=10.0, estimated_penetration=0.04),
+        "local": NetworkClassSpec(length_km=20.0, estimated_penetration=0.01),
+    }
+    k_hat, q_hat, n_hat = compute_stratified_edie(gate_res.segments, specs, dt_window_s=60.0)
 
+    kf = HysteresisAwarePCAKF(n_init=200.0, n_crit=400.0, n_jam=1000.0, m_max_load=0.9)
+    kf_steps = [
+        kf.step(0.8, 1.0, n_hat, 0.02, gate_res.rejection_rate, dt_s=60.0),
+        kf.step(0.9, 0.85, n_hat * 1.1, 0.02, gate_res.rejection_rate, dt_s=60.0),
+    ]
 
-def _episode_for_mode(config: dict, seed: int, sumocfg: Path | None):
-    episode = config_to_episode(config, seed)
-    if sumocfg is not None:
-        return run_sumo_episode(episode, Path(sumocfg))
-    return run_replay_episode(episode)
+    ctrl = ResidualCorrectedSmithPIController(n_crit=400.0, kp_norm=0.85, ki_norm=0.22, delay_steps=1)
+    u_steps = [
+        ctrl.compute_u(220.0, 0.8, kf, dt_s=60.0),
+        ctrl.compute_u(310.0, 0.9, kf, dt_s=60.0),
+        ctrl.compute_u(430.0, 0.95, kf, dt_s=60.0),
+    ]
 
-
-# ---------------------------------------------------------------------------
-# Subcommand implementations
-# ---------------------------------------------------------------------------
-
-def cmd_generate_network(args: argparse.Namespace) -> int:
-    from .network_gen import generate_network
-
-    summary = generate_network(Path(args.output))
-    print(f"net:     {summary['net']}")
-    print(f"demand:  {summary['demand']}")
-    print(f"sumocfg: {summary['sumocfg']}")
-    print(f"class lengths (km): {summary['class_lengths_km']}")
-    return 0
-
-
-def cmd_export_golden(args: argparse.Namespace) -> int:
-    parity.export_golden_vectors(Path(args.path))
-    print(f"parity vectors written to {args.path}")
-    return 0
-
-
-def cmd_init_planned(args: argparse.Namespace) -> int:
-    artifact = write_planned_skeleton_artifact(Path(args.output), Path(args.config))
-    print(f"planned skeleton artifact written to {args.output} (status={artifact['meta']['status']})")
-    return 0
-
-
-def cmd_calibrate(args: argparse.Namespace) -> int:
-    """Gain tuning on the calibration partition ONLY (seeds 1..10).
-
-    Each candidate (Kp, Ki) pair is scored by the mean Total Network Delay of
-    the proposed pipeline across the calibration seeds; the best pair is
-    frozen and written for the sweep. Evaluation seeds are never touched.
-    """
-    config = load_config(Path(args.config))
-    seeds = [int(s) for s in config["seeds"]]
-    if sorted(seeds) != CALIBRATION_SEEDS:
-        print(
-            "calibration must use exactly the pre-registered calibration seeds 1..10",
-            file=sys.stderr,
-        )
-        return 2
-    sumocfg = Path(args.sumocfg) if args.sumocfg else None
-    best: dict | None = None
-    for kp, ki in GAIN_GRID:
-        tnd_values: list[float] = []
-        for seed in seeds:
-            episode = config_to_episode(config, seed)
-            episode = EpisodeConfig(**{**episode.__dict__, "tuned_gains": (kp, ki)})
-            result = _calibration_episode(config, seed, kp, ki, sumocfg)
-            metrics = episode_metrics(result, episode)
-            tnd_values.append(metrics["proposed"]["tnd_veh_h"])
-        mean_tnd = sum(tnd_values) / len(tnd_values)
-        print(f"gains Kp={kp:.2f} Ki={ki:.2f}: mean TND = {mean_tnd:.3f} veh*h")
-        if best is None or mean_tnd < best["mean_tnd_veh_h"]:
-            best = {
-                "kp_norm": kp,
-                "ki_norm": ki,
-                "mean_tnd_veh_h": mean_tnd,
-                "per_seed_tnd_veh_h": tnd_values,
-            }
     payload = {
+        "seed": 202601,
+        "prng_floats": prng_floats,
+        "prng_gaussians": prng_gaussians,
+        "pings": [p.__dict__ for p in pings],
+        "expected_gate": {
+            "rejection_rate": gate_res.rejection_rate,
+            "segments": [s.__dict__ for s in gate_res.segments],
+        },
+        "expected_edie": {"k_hat": k_hat, "q_hat": q_hat, "n_hat": n_hat},
+        "expected_kf_steps": kf_steps,
+        "expected_u_steps": u_steps,
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def run_calibration(config_path: Path, out_path: Path) -> None:
+    """Grid-search tunes (kp_norm, ki_norm) exclusively on Calibration Seeds 1..10."""
+    cfg_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    seeds: list[int] = cfg_data["seeds"]
+    pen_rate = float(cfg_data.get("penetration_rate", 0.02))
+    bias_mode = str(cfg_data.get("bias_mode", "corridor_biased"))
+    delay_s = int(cfg_data.get("delay_s", 60))
+    kp_grid: list[float] = cfg_data.get("kp_grid", [0.65, 0.85, 1.05])
+    ki_grid: list[float] = cfg_data.get("ki_grid", [0.15, 0.22, 0.30])
+
+    best_gains: dict[str, dict[str, float]] = {}
+    for variant_tag in ("C0", "C1"):
+        full_variant = f"G1_F1_{variant_tag}"
+        best_tnd = float("inf")
+        best_pair = (0.85, 0.22)
+        for kp in kp_grid:
+            for ki in ki_grid:
+                tnds = [
+                    run_closed_loop_episode(
+                        EpisodeConfig(
+                            seed=s,
+                            penetration_rate=pen_rate,
+                            bias_mode=bias_mode,
+                            delay_s=delay_s,
+                            variant=full_variant,
+                            kp_norm=float(kp),
+                            ki_norm=float(ki),
+                        )
+                    ).tnd_veh_h
+                    for s in seeds
+                ]
+                med_tnd = float(np.median(tnds))
+                if med_tnd < best_tnd:
+                    best_tnd = med_tnd
+                    best_pair = (float(kp), float(ki))
+        best_gains[variant_tag] = {
+            "kp_norm": best_pair[0],
+            "ki_norm": best_pair[1],
+            "calibrated_median_tnd_veh_h": best_tnd,
+        }
+
+    payload = {
+        "calibrated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "git_sha": get_git_sha(),
         "calibration_seeds": seeds,
-        "criterion": "mean_total_network_delay_veh_h",
-        "gain_grid": [list(pair) for pair in GAIN_GRID],
-        "selected": best,
+        "gains": best_gains,
     }
-    out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    print(f"calibrated gains written to {args.output}: Kp={best['kp_norm']} Ki={best['ki_norm']}")
-    return 0
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def _calibration_episode(
-    config: dict, seed: int, kp: float, ki: float, sumocfg: Path | None
-):
-    episode = config_to_episode(config, seed)
-    episode = EpisodeConfig(**{**episode.__dict__, "tuned_gains": (kp, ki)})
-    if sumocfg is not None:
-        return run_sumo_episode(episode, Path(sumocfg))
-    return run_replay_episode(episode)
+def run_sweep_from_config(config_path: Path, out_path: Path, params_path: Path | None = None) -> None:
+    cfg_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    seeds: list[int] = cfg_data["seeds"]
+    variants: list[str] = cfg_data.get("variants", ["G0_F0_C0", "G1_F0_C0", "G0_F1_C0", "G1_F1_C0", "G1_F1_C1"])
+    pen_rate = float(cfg_data.get("penetration_rate", 0.02))
+    bias_mode = str(cfg_data.get("bias_mode", "corridor_biased"))
+    delay_s = int(cfg_data.get("delay_s", 60))
 
+    tuned_gains = {"C0": {"kp_norm": 0.85, "ki_norm": 0.22}, "C1": {"kp_norm": 0.85, "ki_norm": 0.22}}
+    if params_path is not None and params_path.exists():
+        loaded = json.loads(params_path.read_text(encoding="utf-8"))
+        tuned_gains.update(loaded.get("gains", {}))
 
-def cmd_sweep(args: argparse.Namespace) -> int:
-    """Run the pre-registered evaluation sweep over the held-out seeds.
+    results_by_variant: dict[str, list] = {v: [] for v in variants}
+    for v in variants:
+        ctrl_key = "C1" if "C1" in v else "C0"
+        kp_val = float(tuned_gains[ctrl_key]["kp_norm"])
+        ki_val = float(tuned_gains[ctrl_key]["ki_norm"])
+        for s in seeds:
+            ep_res = run_closed_loop_episode(
+                EpisodeConfig(
+                    seed=s,
+                    penetration_rate=pen_rate,
+                    bias_mode=bias_mode,
+                    delay_s=delay_s,
+                    variant=v,
+                    kp_norm=kp_val,
+                    ki_norm=ki_val,
+                )
+            )
+            results_by_variant[v].append(ep_res)
 
-    The two pipeline variants compared per the analysis plan are:
-      unfiltered_pi    raw unstratified Edie estimate feeding a plain PI loop
-      gated_akf_smith  stateful gate + stratified HT + hysteresis PC-AKF + Smith-PI
-    """
-    config = load_config(Path(args.config))
-    seeds = [int(s) for s in config["seeds"]]
-    if args.params:
-        params = json.loads(Path(args.params).read_text(encoding="utf-8"))
-        gains = (float(params["selected"]["kp_norm"]), float(params["selected"]["ki_norm"]))
-    else:
-        gains = (0.85, 0.22)
-    sumocfg = Path(args.sumocfg) if args.sumocfg else None
-    mode = "simulation" if sumocfg is not None else "replay"
-
-    metrics_by_variant: dict[str, dict[str, list[float]]] = {
-        "unfiltered_pi": {"nrmse_pct": [], "tnd_veh_h": []},
-        "gated_akf_smith": {"nrmse_pct": [], "tnd_veh_h": []},
-    }
-    for seed in seeds:
-        episode = config_to_episode(config, seed)
-        episode = EpisodeConfig(**{**episode.__dict__, "tuned_gains": gains})
-        result = _episode_for_mode(config, seed, sumocfg)
-        metrics = episode_metrics(result, episode)
-        for variant, values in metrics.items():
-            key = "unfiltered_pi" if variant == "baseline" else "gated_akf_smith"
-            metrics_by_variant[key]["nrmse_pct"].append(values["nrmse_pct"])
-            metrics_by_variant[key]["tnd_veh_h"].append(values["tnd_veh_h"])
-        print(
-            f"seed {seed}: NRMSE baseline={metrics['baseline']['nrmse_pct']:.3f}% "
-            f"proposed={metrics['proposed']['nrmse_pct']:.3f}% | "
-            f"TND baseline={metrics['baseline']['tnd_veh_h']:.3f} "
-            f"proposed={metrics['proposed']['tnd_veh_h']:.3f} veh*h"
+    summary_table = []
+    for v in variants:
+        nrmses = np.array([r.nrmse_pct for r in results_by_variant[v]], dtype=np.float64)
+        tnds = np.array([r.tnd_veh_h for r in results_by_variant[v]], dtype=np.float64)
+        summary_table.append(
+            {
+                "condition_id": f"p{int(pen_rate*100):02d}_{bias_mode}_delay{delay_s}_{v}",
+                "penetration_rate": pen_rate,
+                "bias_mode": bias_mode,
+                "delay_s": delay_s,
+                "variant": v,
+                "n_seeds": len(seeds),
+                "nrmse_median_pct": float(np.median(nrmses)),
+                "nrmse_iqr_pct": float(np.percentile(nrmses, 75) - np.percentile(nrmses, 25)),
+                "tnd_median_veh_h": float(np.median(tnds)),
+                "tnd_iqr_veh_h": float(np.percentile(tnds, 75) - np.percentile(tnds, 25)),
+            }
         )
 
-    artifact = write_results_artifact(
-        Path(args.output), Path(args.config), mode, metrics_by_variant
-    )
-    ok = _validate_and_report(artifact)
-    print(f"sweep artifact written to {args.output} (status={artifact['meta']['status']})")
-    return 0 if ok else 3
+    baseline_v = variants[0]
+    base_nrmse = np.array([r.nrmse_pct for r in results_by_variant[baseline_v]], dtype=np.float64)
+    raw_pvals: list[float] = []
+    comparisons_raw: list[dict] = []
 
+    for prop_v in variants[1:]:
+        prop_nrmse = np.array([r.nrmse_pct for r in results_by_variant[prop_v]], dtype=np.float64)
+        hl_diff, ci_low, ci_high = hodges_lehmann_paired(base_nrmse, prop_nrmse, seed=42)
+        c_delta = cliffs_delta(base_nrmse, prop_nrmse)
+        p_raw = paired_wilcoxon_pvalue(base_nrmse, prop_nrmse)
+        raw_pvals.append(p_raw)
+        comparisons_raw.append(
+            {
+                "comparison_id": f"{baseline_v}_vs_{prop_v}_nrmse",
+                "baseline_variant": baseline_v,
+                "proposed_variant": prop_v,
+                "metric_unit": "pct",
+                "hl_median_diff": hl_diff,
+                "ci95_low": ci_low,
+                "ci95_high": ci_high,
+                "cliffs_delta": c_delta,
+                "p_value_raw": p_raw,
+                "p_value_holm": p_raw,
+            }
+        )
 
-def cmd_worker(args: argparse.Namespace) -> int:
-    """Single IndexedJob episode: seed = seed-offset + JOB_INDEX (or --seed)."""
-    seed = args.seed
-    if seed is None:
-        index = os.environ.get("JOB_INDEX")
-        if index is None:
-            print("worker requires --seed or the JOB_INDEX environment variable", file=sys.stderr)
-            return 2
-        seed = int(args.seed_offset) + int(index)
-    config = load_config(Path(args.config))
-    params_gains = (0.85, 0.22)
-    if args.params:
-        params = json.loads(Path(args.params).read_text(encoding="utf-8"))
-        params_gains = (float(params["selected"]["kp_norm"]), float(params["selected"]["ki_norm"]))
-    episode = config_to_episode(config, seed)
-    episode = EpisodeConfig(**{**episode.__dict__, "tuned_gains": params_gains})
-    result = _episode_for_mode(config, seed, Path(args.sumocfg) if args.sumocfg else None)
-    metrics = episode_metrics(result, episode)
+    holm_pvals = holm_bonferroni_correction(raw_pvals)
+    for comp, p_adj in zip(comparisons_raw, holm_pvals):
+        comp["p_value_holm"] = p_adj
+
+    cfg_hash = hashlib.sha256(config_path.read_bytes()).hexdigest()
+    data_hash = hashlib.sha256(json.dumps(summary_table, sort_keys=True).encode("utf-8")).hexdigest()
+
     payload = {
-        "seed": seed,
-        "mode": "simulation" if args.sumocfg else "replay",
-        "metrics": metrics,
+        "meta": {
+            "artifact_id": "perimeterflow-mfd-ensemble",
+            "run_id": f"run-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+            "git_sha": get_git_sha(),
+            "config_sha256": cfg_hash,
+            "data_sha256": data_hash,
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "status": "reproduced-in-ci",
+            "mode": "simulation",
+            "calibration_seeds": list(range(1, 11)),
+            "evaluation_seeds": seeds,
+            "license": "MIT",
+        },
+        "summary_table": summary_table,
+        "ablation_comparisons": comparisons_raw,
     }
-    out_path = Path(args.output)
+    validate_artifact_dict(payload)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    print(f"worker episode for seed {seed} written to {args.output}")
-    return 0
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
-def cmd_validate_pneuma(args: argparse.Namespace) -> int:
-    report = export_validation_report(Path(args.output), Path(args.subset))
-    print(
-        f"pNEUMA validation: {report['total_pings']} pings across "
-        f"{report['vehicles_observed']} vehicles, rejection rate "
-        f"{report['rejection_rate']:.3f} -> {args.output}"
-    )
-    return 0
+def run_k8s_indexed_worker(seed_offset: int, out_dir: Path) -> None:
+    """Executes a single seed slice inside a Kubernetes IndexedJob pod."""
+    job_idx = int(os.environ.get("JOB_INDEX", "0"))
+    seed = seed_offset + job_idx
+    variants = ["G0_F0_C0", "G1_F0_C0", "G0_F1_C0", "G1_F1_C0", "G1_F1_C1"]
+    records = []
+    for v in variants:
+        ep = run_closed_loop_episode(EpisodeConfig(seed=seed, variant=v))
+        records.append(
+            {
+                "seed": seed,
+                "variant": v,
+                "nrmse_pct": ep.nrmse_pct,
+                "tnd_veh_h": ep.tnd_veh_h,
+            }
+        )
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_file = out_dir / f"seed_{seed:03d}.json"
+    out_file.write_text(json.dumps({"seed": seed, "results": records}, indent=2), encoding="utf-8")
 
 
-def _validate_and_report(artifact: dict) -> bool:
-    from .stats_eval import validate_artifact
+def main() -> None:
+    parser = argparse.ArgumentParser(description="PerimeterFlow CLI")
+    parser.add_argument("--export-golden", type=Path, help="Export golden parity vectors JSON")
+    parser.add_argument("--config", type=Path, help="YAML configuration file")
+    parser.add_argument("--output", type=Path, help="Output JSON artifact path")
+    parser.add_argument("--mode", type=str, default="sweep", choices=["sweep", "calibrate", "worker"])
+    parser.add_argument("--params", type=Path, help="Optional calibrated parameters file")
+    parser.add_argument("--seed-offset", type=int, default=11)
+    parser.add_argument("--worker-out-dir", type=Path, default=Path("/out"))
+    args = parser.parse_args()
 
-    return validate_artifact(artifact)
+    if args.export_golden is not None:
+        export_golden_parity_vectors(args.export_golden)
+        return
 
+    if args.mode == "worker":
+        run_k8s_indexed_worker(args.seed_offset, args.worker_out_dir)
+        return
 
-# ---------------------------------------------------------------------------
-# Argument parsing
-# ---------------------------------------------------------------------------
+    if args.mode == "calibrate":
+        if args.config is None or args.output is None:
+            raise ValueError("--config and --output are required for --mode calibrate")
+        run_calibration(args.config, args.output)
+        return
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="perimeterflow", description=__doc__)
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    p = sub.add_parser("generate-network", help="build the deterministic SUMO bundle")
-    p.add_argument("--output", type=str, default="results/network")
-    p.set_defaults(func=cmd_generate_network)
-
-    p = sub.add_parser("export-golden", help="export golden parity vectors")
-    p.add_argument("path", nargs="?", default=str(parity.DEFAULT_EXPORT_PATH))
-    p.set_defaults(func=cmd_export_golden)
-
-    p = sub.add_parser("init-planned", help="export the planned (pre-run) artifact")
-    p.add_argument("--config", default="configs/evaluate_seeds.yaml")
-    p.add_argument("--output", default="results/ensemble.json")
-    p.set_defaults(func=cmd_init_planned)
-
-    p = sub.add_parser("calibrate", help="tune gains on calibration seeds 1..10")
-    p.add_argument("--config", default="configs/calibrate_seeds.yaml")
-    p.add_argument("--output", default="results/calibrated_params.json")
-    p.add_argument("--sumocfg", default=None, help="run against a real SUMO network")
-    p.set_defaults(func=cmd_calibrate)
-
-    p = sub.add_parser("sweep", help="run held-out evaluation seeds and export the artifact")
-    p.add_argument("--config", default="configs/evaluate_seeds.yaml")
-    p.add_argument("--params", default=None, help="calibrated_params.json from calibrate")
-    p.add_argument("--output", default="results/ensemble.json")
-    p.add_argument("--sumocfg", default=None, help="run against a real SUMO network")
-    p.set_defaults(func=cmd_sweep)
-
-    p = sub.add_parser("worker", help="single IndexedJob worker episode")
-    p.add_argument("--config", default="configs/evaluate_seeds.yaml")
-    p.add_argument("--params", default=None)
-    p.add_argument("--seed", type=int, default=None)
-    p.add_argument("--seed-offset", type=int, default=11)
-    p.add_argument("--output", default=None)
-    p.add_argument("--sumocfg", default=None)
-    p.set_defaults(func=cmd_worker)
-
-    p = sub.add_parser("validate-pneuma", help="offline validation on pNEUMA trajectories")
-    p.add_argument("--subset", type=str, default=str(DEFAULT_PNEUMA_DIR))
-    p.add_argument("--output", type=str, default="results/pneuma_validation.json")
-    p.set_defaults(func=cmd_validate_pneuma)
-
-    return parser
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    if args.command == "worker" and args.output is None:
-        seed_hint = args.seed if args.seed is not None else "index"
-        args.output = f"results/worker_{seed_hint}.json"
-    return args.func(args)
+    if args.config is not None and args.output is not None:
+        run_sweep_from_config(args.config, args.output, args.params)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

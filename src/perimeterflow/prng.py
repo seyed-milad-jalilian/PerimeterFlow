@@ -1,5 +1,6 @@
 import math
 
+
 class Mulberry32:
     """
     Deterministic 32-bit PRNG matching bitwise implementation in TypeScript.
@@ -21,9 +22,3 @@ class Mulberry32:
         u2 = self.next_float()
         z0 = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
         return mean + z0 * std
-
-    def int_below(self, bound: int) -> int:
-        """Deterministic uniform integer in [0, bound)."""
-        if bound <= 0:
-            raise ValueError("bound must be a positive integer")
-        return int(self.next_float() * bound) % bound
