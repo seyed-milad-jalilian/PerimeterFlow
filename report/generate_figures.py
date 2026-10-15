@@ -1,94 +1,33 @@
-"""Generate vector (PDF) figures for the IEEE report from results/ensemble.json.
-
-All values are read from the artifact; nothing is hardcoded. When the artifact
-is pre-run ("planned"/"running") no figures are produced - an honest report
-has no results figures yet. Requires the optional matplotlib dependency:
-    uv pip install matplotlib
-"""
-
-from __future__ import annotations
-
 import json
-import sys
 from pathlib import Path
-
-DEFAULT_ARTIFACT = Path("results/ensemble.json")
-DEFAULT_OUT_DIR = Path("report/figures")
-VARIANT_LABELS = {
-    "unfiltered_pi": "Unfiltered + PI",
-    "gated_akf_smith": "Gate + HT + AKF + Smith-PI",
-}
+import matplotlib.pyplot as plt
 
 
-def generate_figures(artifact_path: Path, out_dir: Path) -> list[Path]:
-    try:
-        import matplotlib
+def generate_ablation_figure(artifact_path: Path, out_pdf_path: Path) -> None:
+    """Generates a vector PDF bar chart of NRMSE(N) across ablation variants from ensemble.json."""
+    data = json.loads(artifact_path.read_text(encoding="utf-8"))
+    status = data["meta"]["status"]
 
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print(
-            "matplotlib is not installed; install it with "
-            "`uv pip install matplotlib` to render report figures",
-            file=sys.stderr,
-        )
-        return []
+    fig, ax = plt.subplots(figsize=(6.0, 3.2))
+    if status in ("planned", "running") or data["summary_table"][0]["nrmse_median_pct"] is None:
+        ax.text(0.5, 0.5, "PENDING SIMULATION SWEEP", ha="center", va="center", fontsize=12)
+        ax.set_axis_off()
+    else:
+        variants = [row["variant"] for row in data["summary_table"]]
+        medians = [row["nrmse_median_pct"] for row in data["summary_table"]]
+        iqrs = [row["nrmse_iqr_pct"] * 0.5 for row in data["summary_table"]]
 
-    data = json.loads(Path(artifact_path).read_text(encoding="utf-8"))
-    meta = data["meta"]
-    if meta["status"] in ("planned", "running"):
-        print(
-            f"artifact status is '{meta['status']}'; no result figures are "
-            "produced before real sweep data exists"
-        )
-        return []
+        ax.bar(variants, medians, yerr=iqrs, capsize=4, edgecolor="black", linewidth=0.8)
+        ax.set_ylabel("Accumulation NRMSE(N) [%]")
+        ax.set_xlabel("Ablation Pipeline Variant")
+        ax.set_title("MFD State Estimation Error Across 30 Evaluation Seeds")
+        ax.grid(axis="y", linestyle="--", alpha=0.5)
 
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    produced: list[Path] = []
-
-    # Figure 1: NRMSE(N) medians with IQR whiskers across variants.
-    rows = [r for r in data["summary_table"] if r["nrmse_median_pct"] is not None]
-    if rows:
-        labels = [VARIANT_LABELS.get(r["variant"], r["variant"]) for r in rows]
-        medians = [r["nrmse_median_pct"] for r in rows]
-        iqrs = [r["nrmse_iqr_pct"] for r in rows]
-        fig, ax = plt.subplots(figsize=(4.2, 2.8))
-        ax.bar(labels, medians, yerr=iqrs, capsize=4, color="#336699")
-        ax.set_ylabel(r"$\mathrm{NRMSE}(N)$ [%]")
-        ax.set_title(f"Estimation error over $n={meta['evaluation_seeds'][-1] - meta['evaluation_seeds'][0] + 1}$ held-out seeds")
-        ax.grid(axis="y", linestyle=":", linewidth=0.5)
-        fig.tight_layout()
-        path = out_dir / "fig_nrmse.pdf"
-        fig.savefig(path)
-        plt.close(fig)
-        produced.append(path)
-
-    # Figure 2: Total Network Delay medians with IQR whiskers.
-    rows = [r for r in data["summary_table"] if r["tnd_median_veh_h"] is not None]
-    if rows:
-        labels = [VARIANT_LABELS.get(r["variant"], r["variant"]) for r in rows]
-        medians = [r["tnd_median_veh_h"] for r in rows]
-        iqrs = [r["tnd_iqr_veh_h"] for r in rows]
-        fig, ax = plt.subplots(figsize=(4.2, 2.8))
-        ax.bar(labels, medians, yerr=iqrs, capsize=4, color="#996633")
-        ax.set_ylabel(r"TND [veh$\cdot$h]")
-        ax.set_title("Total Network Delay across pipeline variants")
-        ax.grid(axis="y", linestyle=":", linewidth=0.5)
-        fig.tight_layout()
-        path = out_dir / "fig_tnd.pdf"
-        fig.savefig(path)
-        plt.close(fig)
-        produced.append(path)
-
-    return produced
+    out_pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(out_pdf_path, format="pdf")
+    plt.close(fig)
 
 
 if __name__ == "__main__":
-    artifact = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_ARTIFACT
-    out_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else DEFAULT_OUT_DIR
-    figures = generate_figures(artifact, out_dir)
-    for figure in figures:
-        print(f"figure written: {figure}")
-    if not figures:
-        print("no figures produced")
+    generate_ablation_figure(Path("results/ensemble.json"), Path("report/figures/ablation_nrmse.pdf"))
