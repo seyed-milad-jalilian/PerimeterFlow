@@ -1,0 +1,27 @@
+p1.md
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+
+# Node
+node_modules/
+
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.bbl
+report/*.blg
+report/generated_metrics.tex
+
+# Local artifacts (generated at runtime)
+results/*.json
+!results/.gitkeep
