@@ -1,3 +1,7 @@
+// Strict TypeScript Port of Mulberry32, Stateful Kinematic Gate, Stratified Edie,
+// Hysteresis PC-AKF, and Residual-Corrected Smith-PI Controller.
+// Guarantees <= 1e-9 numerical parity with Python reference (src/perimeterflow/).
+
 export class Mulberry32 {
   private state: number;
   constructor(seed: number) {
@@ -112,231 +116,207 @@ export function runStatefulQualityGate(
 export interface NetworkClassSpec {
   readonly length_km: number;
   readonly estimated_penetration: number;
-}
-
-export interface StratifiedEdieResult {
-  readonly k_hat_veh_km: number;
-  readonly q_hat_veh_h: number;
-  readonly n_hat_veh: number;
+  readonly observed_length_km?: number;
 }
 
 export function computeStratifiedEdie(
   segments: readonly AcceptedSegment[],
-  class_specs: Readonly<Record<string, NetworkClassSpec>>,
-  dt_window_s: number = 60.0,
-  p_min: number = 0.005
-): StratifiedEdieResult {
-  const class_keys = Object.keys(class_specs);
-  let total_length_km = 0.0;
-  for (const key of class_keys) {
-    total_length_km += class_specs[key].length_km;
-  }
-  if (total_length_km <= 0.0) {
-    throw new Error("Total network length must be positive");
+  classSpecs: Record<string, NetworkClassSpec>,
+  dtWindowS = 60.0,
+  pMin = 0.005
+): { k_hat: number; q_hat: number; n_hat: number } {
+  const keys = Object.keys(classSpecs);
+  const totalLengthKm = keys.reduce((acc, k) => acc + classSpecs[k].length_km, 0.0);
+  if (totalLengthKm <= 0.0) {
+    throw new Error("Total network length must be strictly positive");
   }
 
-  const tau_by_class = new Map<string, number>();
-  const d_by_class = new Map<string, number>();
-  for (const key of class_keys) {
-    tau_by_class.set(key, 0.0);
-    d_by_class.set(key, 0.0);
+  const tauByClass: Record<string, number> = {};
+  const dByClass: Record<string, number> = {};
+  for (const k of keys) {
+    tauByClass[k] = 0.0;
+    dByClass[k] = 0.0;
   }
 
   for (const seg of segments) {
-    const tau = tau_by_class.get(seg.link_class);
-    const d = d_by_class.get(seg.link_class);
-    if (tau !== undefined && d !== undefined) {
-      tau_by_class.set(seg.link_class, tau + seg.tau_s);
-      d_by_class.set(seg.link_class, d + seg.d_m / 1000.0);
+    if (seg.link_class in tauByClass) {
+      tauByClass[seg.link_class] += seg.tau_s;
+      dByClass[seg.link_class] += seg.d_m / 1000.0;
     }
   }
 
-  let n_hat_total = 0.0;
-  let weighted_flow_sum = 0.0;
-  const dt_hours = dt_window_s / 3600.0;
+  let nHatTotal = 0.0;
+  let weightedFlowSum = 0.0;
+  const dtHours = dtWindowS / 3600.0;
 
-  for (const key of class_keys) {
-    const spec = class_specs[key];
-    const p_c = Math.max(spec.estimated_penetration, p_min);
-    const total_veh_hours_c = (tau_by_class.get(key) as number) / 3600.0 / p_c;
-    const total_veh_km_c = (d_by_class.get(key) as number) / p_c;
+  for (const k of keys) {
+    const spec = classSpecs[k];
+    const pC = Math.max(spec.estimated_penetration, pMin);
+    const lObs = spec.observed_length_km !== undefined && spec.observed_length_km > 0.0 ? spec.observed_length_km : spec.length_km;
+    const spatialScale = spec.length_km / lObs;
 
-    n_hat_total += total_veh_hours_c / dt_hours;
-    weighted_flow_sum += total_veh_km_c / dt_hours;
+    const totalVehHoursC = (spatialScale * (tauByClass[k] / 3600.0)) / pC;
+    const totalVehKmC = (spatialScale * dByClass[k]) / pC;
+
+    nHatTotal += totalVehHoursC / dtHours;
+    weightedFlowSum += totalVehKmC / dtHours;
   }
 
-  const k_hat = n_hat_total / total_length_km;
-  const q_hat = weighted_flow_sum / total_length_km;
-  return { k_hat_veh_km: k_hat, q_hat_veh_h: q_hat, n_hat_veh: n_hat_total };
-}
-
-export interface HysteresisAwarePCAKFParams {
-  readonly n_init: number;
-  readonly n_crit: number;
-  readonly n_jam: number;
-  readonly m_max_load: number;
-  readonly hysteresis_drop_ratio?: number;
-  readonly q_var?: number;
-  readonly r_base?: number;
-  readonly alpha_gate?: number;
+  return {
+    k_hat: nHatTotal / totalLengthKm,
+    q_hat: weightedFlowSum / totalLengthKm,
+    n_hat: nHatTotal,
+  };
 }
 
 export class HysteresisAwarePCAKF {
-  readonly n_crit: number;
-  readonly n_jam: number;
-  readonly m_max_load: number;
-  readonly m_max_unload: number;
-  readonly q_var: number;
-  readonly r_base: number;
-  readonly alpha_gate: number;
-  n_est: number;
-  n_prev: number;
-  p_cov: number;
+  public n_est: number;
+  public n_prev: number;
+  public p_cov: number;
+  public readonly n_crit: number;
+  public readonly n_jam: number;
+  public readonly m_max_load: number;
+  public readonly m_max_unload: number;
+  public readonly q_var: number;
+  public readonly r_base: number;
+  public readonly alpha_gate: number;
+  public readonly p_ref: number;
 
-  constructor(params: HysteresisAwarePCAKFParams) {
-    this.n_est = params.n_init;
-    this.n_prev = params.n_init;
+  constructor(
+    nInit: number,
+    nCrit: number,
+    nJam: number,
+    mMaxLoad: number,
+    hysteresisDropRatio = 0.82,
+    qVar = 20.0,
+    rBase = 120.0,
+    alphaGate = 2.5,
+    pRef = 0.05
+  ) {
+    this.n_est = nInit;
+    this.n_prev = nInit;
     this.p_cov = 80.0;
-    this.n_crit = params.n_crit;
-    this.n_jam = params.n_jam;
-    this.m_max_load = params.m_max_load;
-    this.m_max_unload = params.m_max_load * (params.hysteresis_drop_ratio ?? 0.82);
-    this.q_var = params.q_var ?? 20.0;
-    this.r_base = params.r_base ?? 120.0;
-    this.alpha_gate = params.alpha_gate ?? 2.5;
+    this.n_crit = nCrit;
+    this.n_jam = nJam;
+    this.m_max_load = mMaxLoad;
+    this.m_max_unload = mMaxLoad * hysteresisDropRatio;
+    this.q_var = qVar;
+    this.r_base = rBase;
+    this.alpha_gate = alphaGate;
+    this.p_ref = pRef;
   }
 
-  public mfdOutflow(n_val: number, is_unloading: boolean = false): number {
-    const n_c = Math.max(0.0, Math.min(n_val, this.n_jam));
-    const m_peak =
-      is_unloading && n_c > 0.7 * this.n_crit ? this.m_max_unload : this.m_max_load;
-    if (n_c <= this.n_crit) {
-      return m_peak * (n_c / this.n_crit) * (2.0 - n_c / this.n_crit);
+  public mfdOutflow(nVal: number, isUnloading = false): number {
+    const nC = Math.max(0.0, Math.min(nVal, this.n_jam));
+    const mPeak = isUnloading && nC > 0.7 * this.n_crit ? this.m_max_unload : this.m_max_load;
+    if (nC <= this.n_crit) {
+      return mPeak * (nC / this.n_crit) * (2.0 - nC / this.n_crit);
     }
-    const ratio = (n_c - this.n_crit) / Math.max(1.0, this.n_jam - this.n_crit);
-    return m_peak * Math.max(0.0, 1.0 - ratio * ratio);
+    const ratio = (nC - this.n_crit) / Math.max(1.0, this.n_jam - this.n_crit);
+    return mPeak * Math.max(0.0, 1.0 - ratio * ratio);
   }
 
   public step(
-    q_in_veh_s: number,
-    u_gate: number,
-    z_obs_n: number | null,
-    p_eff: number,
-    rejection_rate: number,
-    dt_s: number = 60.0
+    qInVehS: number,
+    uGate: number,
+    zObsN: number | null,
+    pEff: number,
+    rejectionRate: number,
+    dtS = 60.0
   ): number {
-    const is_unloading = this.n_est < this.n_prev && this.n_est > 0.8 * this.n_crit;
-    const outflow = this.mfdOutflow(this.n_est, is_unloading);
-    const n_pred = Math.max(
-      0.0,
-      Math.min(this.n_est + dt_s * (q_in_veh_s * u_gate - outflow), this.n_jam)
-    );
+    const isUnloading = this.n_est < this.n_prev && this.n_est > 0.8 * this.n_crit;
+    const outflow = this.mfdOutflow(this.n_est, isUnloading);
+    const nPred = Math.max(0.0, Math.min(this.n_est + dtS * (qInVehS * uGate - outflow), this.n_jam));
 
     const eps = 1.0;
-    const d_phi = (this.mfdOutflow(this.n_est + eps, is_unloading) - outflow) / eps;
-    const f_jac = 1.0 - dt_s * d_phi;
-    const p_pred = f_jac * f_jac * this.p_cov + this.q_var;
+    const dPhi = (this.mfdOutflow(this.n_est + eps, isUnloading) - outflow) / eps;
+    const fJac = 1.0 - dtS * dPhi;
+    const pPred = fJac * fJac * this.p_cov + this.q_var;
 
     this.n_prev = this.n_est;
-    if (z_obs_n === null || Number.isNaN(z_obs_n) || p_eff <= 0.001 || rejection_rate >= 0.95) {
-      this.n_est = n_pred;
-      this.p_cov = p_pred;
+    if (zObsN === null || Number.isNaN(zObsN) || pEff <= 0.001 || rejectionRate >= 0.95) {
+      this.n_est = nPred;
+      this.p_cov = Math.max(1e-6, pPred);
       return this.n_est;
     }
 
-    const r_t =
-      this.r_base * (0.05 / Math.max(p_eff, 0.005)) * Math.exp(this.alpha_gate * rejection_rate);
-    const k_gain = p_pred / (p_pred + r_t);
-    this.n_est = Math.max(0.0, Math.min(n_pred + k_gain * (z_obs_n - n_pred), this.n_jam));
-    this.p_cov = (1.0 - k_gain) * p_pred;
+    const rT = this.r_base * (this.p_ref / Math.max(pEff, 0.005)) * Math.exp(this.alpha_gate * rejectionRate);
+    const kGain = pPred / (pPred + rT);
+    this.n_est = Math.max(0.0, Math.min(nPred + kGain * (zObsN - nPred), this.n_jam));
+    this.p_cov = Math.max(1e-6, (1.0 - kGain) * pPred);
     return this.n_est;
   }
 }
 
-export interface ResidualCorrectedSmithPIControllerParams {
-  readonly n_crit: number;
-  readonly kp_norm?: number;
-  readonly ki_norm?: number;
-  readonly u_min?: number;
-  readonly u_max?: number;
-  readonly delay_steps?: number;
-  readonly residual_gain?: number;
-}
-
 export class ResidualCorrectedSmithPIController {
-  readonly n_crit: number;
-  readonly kp_norm: number;
-  readonly ki_norm: number;
-  readonly u_min: number;
-  readonly u_max: number;
-  readonly delay_steps: number;
-  readonly residual_gain: number;
-  u_prev: number;
-  err_prev: number;
-  readonly actuation_history: Array<readonly [number, number]>;
-  readonly model_pred_history: number[];
+  public readonly n_crit: number;
+  public readonly kp_norm: number;
+  public readonly ki_norm: number;
+  public readonly u_min: number;
+  public readonly u_max: number;
+  public readonly delay_steps: number;
+  public readonly residual_gain: number;
+  private u_prev = 1.0;
+  private err_prev = 0.0;
+  private actuation_history: Array<[number, number]> = [];
+  private model_pred_history: number[] = [];
 
-  constructor(params: ResidualCorrectedSmithPIControllerParams) {
-    this.n_crit = Math.max(1.0, params.n_crit);
-    this.kp_norm = params.kp_norm ?? 0.85;
-    this.ki_norm = params.ki_norm ?? 0.22;
-    this.u_min = params.u_min ?? 0.15;
-    this.u_max = params.u_max ?? 1.0;
-    this.delay_steps = Math.max(0, Math.trunc(params.delay_steps ?? 0));
-    this.residual_gain = params.residual_gain ?? 0.5;
-    this.u_prev = 1.0;
-    this.err_prev = 0.0;
-    this.actuation_history = [];
-    this.model_pred_history = [];
+  constructor(
+    nCrit: number,
+    kpNorm = 0.85,
+    kiNorm = 0.22,
+    uMin = 0.15,
+    uMax = 1.0,
+    delaySteps = 0,
+    residualGain = 0.5
+  ) {
+    this.n_crit = Math.max(1.0, nCrit);
+    this.kp_norm = kpNorm;
+    this.ki_norm = kiNorm;
+    this.u_min = uMin;
+    this.u_max = uMax;
+    this.delay_steps = Math.max(0, Math.trunc(delaySteps));
+    this.residual_gain = residualGain;
     this.model_pred_history.push(this.n_crit);
   }
 
   public computeU(
-    n_delayed_obs: number,
-    q_in_current: number,
-    kf_model: HysteresisAwarePCAKF,
-    dt_s: number = 60.0
+    nDelayedObs: number,
+    qInCurrent: number,
+    kfModel: HysteresisAwarePCAKF,
+    dtS = 60.0
   ): number {
-    let n_rollout: number;
-    let n_effective: number;
-    if (this.delay_steps === 0 || this.actuation_history.length === 0) {
-      n_rollout = n_delayed_obs;
-      n_effective = n_delayed_obs;
-    } else {
-      n_rollout = n_delayed_obs;
-      for (const [past_q_in, past_u] of this.actuation_history) {
-        const outflow = kf_model.mfdOutflow(n_rollout, false);
-        n_rollout = Math.max(
-          0.0,
-          Math.min(n_rollout + dt_s * (past_q_in * past_u - outflow), kf_model.n_jam)
-        );
-      }
+    let nRollout = nDelayedObs;
+    let nEffective = nDelayedObs;
 
-      const n_model_delayed = this.model_pred_history[0];
-      const residual = n_delayed_obs - n_model_delayed;
-      n_effective = Math.max(
-        0.0,
-        Math.min(n_rollout + this.residual_gain * residual, kf_model.n_jam)
-      );
+    if (this.delay_steps > 0 && this.actuation_history.length > 0) {
+      for (const [pastQIn, pastU] of this.actuation_history) {
+        const outflow = kfModel.mfdOutflow(nRollout, false);
+        nRollout = Math.max(0.0, Math.min(nRollout + dtS * (pastQIn * pastU - outflow), kfModel.n_jam));
+      }
+      const nModelDelayed = this.model_pred_history[0];
+      const residual = nDelayedObs - nModelDelayed;
+      nEffective = Math.max(0.0, Math.min(nRollout + this.residual_gain * residual, kfModel.n_jam));
     }
 
-    const err_t = (n_effective - this.n_crit) / this.n_crit;
-    const delta_u = -this.kp_norm * (err_t - this.err_prev) - this.ki_norm * err_t;
-    const u_new = Math.max(this.u_min, Math.min(this.u_max, this.u_prev + delta_u));
+    const errT = (nEffective - this.n_crit) / this.n_crit;
+    const deltaU = -this.kp_norm * (errT - this.err_prev) - this.ki_norm * errT;
+    const uNew = Math.max(this.u_min, Math.min(this.u_max, this.u_prev + deltaU));
 
     if (this.delay_steps > 0) {
-      this.actuation_history.push([q_in_current, u_new]);
-      while (this.actuation_history.length > this.delay_steps) {
+      if (this.actuation_history.length >= this.delay_steps) {
         this.actuation_history.shift();
       }
-      this.model_pred_history.push(n_rollout);
-      while (this.model_pred_history.length > this.delay_steps + 1) {
+      this.actuation_history.push([qInCurrent, uNew]);
+
+      if (this.model_pred_history.length >= this.delay_steps + 1) {
         this.model_pred_history.shift();
       }
+      this.model_pred_history.push(nRollout);
     }
 
-    this.u_prev = u_new;
-    this.err_prev = err_t;
-    return u_new;
+    this.u_prev = uNew;
+    this.err_prev = errT;
+    return uNew;
   }
 }

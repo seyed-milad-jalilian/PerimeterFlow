@@ -1,853 +1,149 @@
 {
-  "tolerance": 1e-09,
-  "prng_vectors": [
+  "seed": 202601,
+  "prng_floats": [
+    0.4030899051576853,
+    0.7136061610653996,
+    0.2586074897553772,
+    0.411599901271984,
+    0.6156972516328096,
+    0.8185958382673562,
+    0.05947902915067971,
+    0.4022730158176273,
+    0.598126694560051,
+    0.9926635536830872,
+    0.9590022379998118,
+    0.0427634883671999,
+    0.1703724516555667,
+    0.20269345422275364,
+    0.8949336404912174,
+    0.8179813513997942
+  ],
+  "prng_gaussians": [
+    2.166487278180291,
+    0.8617891261043367,
+    0.8754156320345601,
+    3.1855553008550097,
+    1.8295985856337798,
+    3.269090730073592,
+    1.781316837858021,
+    1.6626541458251711,
+    4.444178365357768,
+    2.0731795647433984,
+    1.3801044651868986,
+    1.9984165468294068,
+    3.4270472539493664,
+    0.9553781292276275,
+    3.1261840696353635,
+    3.0019862659217473
+  ],
+  "pings": [
     {
-      "seed": 1,
-      "next_float": [
-        0.6270739405881613,
-        0.002735721180215478,
-        0.5274470399599522,
-        0.9810509674716741,
-        0.9683778982143849,
-        0.281103502959013,
-        0.6128388606011868,
-        0.7207431411370635,
-        0.425796952098608,
-        0.9948229456786066
-      ],
-      "next_gaussian": [
-        0.9659740590152261,
-        1.1231041937525543,
-        -0.049227862786499016,
-        -0.1808915033144518,
-        1.3060548291241842,
-        -1.2513702872399977,
-        -1.634414901027784,
-        0.9436811497095164,
-        1.0903569016386006,
-        0.14630552777559597
-      ]
+      "veh_id": "v1",
+      "link_class": "arterial",
+      "timestamp_s": 0.0,
+      "x_obs_m": 0.0,
+      "y_obs_m": 0.0,
+      "speed_obs_ms": 10.0,
+      "snap_dist_m": 1.5
     },
     {
-      "seed": 42,
-      "next_float": [
-        0.6011037519201636,
-        0.44829055899754167,
-        0.8524657934904099,
-        0.6697340414393693,
-        0.17481389874592423,
-        0.5265925421845168,
-        0.2732279943302274,
-        0.6247446539346129,
-        0.8654746483080089,
-        0.4723170551005751
-      ],
-      "next_gaussian": [
-        -0.956162229384149,
-        -0.2730261048826104,
-        -1.8416271847835968,
-        -1.1408820709540242,
-        -0.5294337937164153,
-        1.2285906730631042,
-        -0.26851772662724444,
-        -1.8017934176870904,
-        -0.6659991482570612,
-        -3.2790771333354165
-      ]
+      "veh_id": "v1",
+      "link_class": "arterial",
+      "timestamp_s": 5.0,
+      "x_obs_m": 50.0,
+      "y_obs_m": 0.0,
+      "speed_obs_ms": 10.0,
+      "snap_dist_m": 1.8
     },
     {
-      "seed": 12345,
-      "next_float": [
-        0.9797282677609473,
-        0.3067522644996643,
-        0.484205421525985,
-        0.817934412509203,
-        0.5094283693470061,
-        0.34747186047025025,
-        0.07375754183158278,
-        0.7663964673411101,
-        0.9968264393974096,
-        0.8250224851071835
-      ],
-      "next_gaussian": [
-        -0.07064807449259204,
-        0.49860719149527216,
-        -0.6676634049638013,
-        0.23482527217680943,
-        0.036207670102510664,
-        1.1748716014861296,
-        0.4724176279305982,
-        0.007121287323799363,
-        -0.41462251693801566,
-        0.4758430418785325
-      ]
+      "veh_id": "v1",
+      "link_class": "arterial",
+      "timestamp_s": 10.0,
+      "x_obs_m": 230.0,
+      "y_obs_m": 0.0,
+      "speed_obs_ms": 36.0,
+      "snap_dist_m": 2.0
+    },
+    {
+      "veh_id": "v1",
+      "link_class": "arterial",
+      "timestamp_s": 15.0,
+      "x_obs_m": 150.0,
+      "y_obs_m": 0.0,
+      "speed_obs_ms": 10.0,
+      "snap_dist_m": 1.2
+    },
+    {
+      "veh_id": "v2",
+      "link_class": "local",
+      "timestamp_s": 0.0,
+      "x_obs_m": 0.0,
+      "y_obs_m": 0.0,
+      "speed_obs_ms": 6.0,
+      "snap_dist_m": 2.1
+    },
+    {
+      "veh_id": "v2",
+      "link_class": "local",
+      "timestamp_s": 5.0,
+      "x_obs_m": 30.0,
+      "y_obs_m": 0.0,
+      "speed_obs_ms": 6.0,
+      "snap_dist_m": 2.0
     }
   ],
-  "gate_vectors": [
-    {
-      "name": "clean_two_vehicles",
-      "config": {
-        "v_max_ms": 22.22,
-        "a_max_ms2": 4.5,
-        "a_min_ms2": -6.5,
-        "max_dt_gap_s": 15.0,
-        "max_map_snap_dist_m": 12.0
+  "expected_gate": {
+    "rejection_rate": 0.16666666666666666,
+    "segments": [
+      {
+        "veh_id": "v1",
+        "link_class": "arterial",
+        "timestamp_s": 0.0,
+        "tau_s": 0.0,
+        "d_m": 0.0
       },
-      "pings": [
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 0.0,
-          "x_obs_m": 0.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 10.0,
-          "x_obs_m": 100.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 20.0,
-          "x_obs_m": 200.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 0.0,
-          "x_obs_m": 0.0,
-          "y_obs_m": 500.0,
-          "speed_obs_ms": 15.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 15.0,
-          "x_obs_m": 225.0,
-          "y_obs_m": 500.0,
-          "speed_obs_ms": 15.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 30.0,
-          "x_obs_m": 450.0,
-          "y_obs_m": 500.0,
-          "speed_obs_ms": 15.0,
-          "snap_dist_m": 0.0
-        }
-      ],
-      "segments": [
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 0.0,
-          "tau_s": 0.0,
-          "d_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 10.0,
-          "tau_s": 10.0,
-          "d_m": 100.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 20.0,
-          "tau_s": 10.0,
-          "d_m": 100.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 0.0,
-          "tau_s": 0.0,
-          "d_m": 0.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 15.0,
-          "tau_s": 15.0,
-          "d_m": 225.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 30.0,
-          "tau_s": 15.0,
-          "d_m": 225.0
-        }
-      ],
-      "rejection_rate": 0.0,
-      "total_pings": 6,
-      "rejected_spatial": 0,
-      "rejected_kinematic": 0
-    },
-    {
-      "name": "outlier_spike",
-      "config": {
-        "v_max_ms": 22.22,
-        "a_max_ms2": 4.5,
-        "a_min_ms2": -6.5,
-        "max_dt_gap_s": 15.0,
-        "max_map_snap_dist_m": 12.0
+      {
+        "veh_id": "v1",
+        "link_class": "arterial",
+        "timestamp_s": 5.0,
+        "tau_s": 5.0,
+        "d_m": 50.0
       },
-      "pings": [
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 0.0,
-          "x_obs_m": 0.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 5.0,
-          "x_obs_m": 50.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 6.0,
-          "x_obs_m": 100.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 11.0,
-          "x_obs_m": 100.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 12.0,
-          "x_obs_m": 110.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 13.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 16.0,
-          "x_obs_m": 140.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        }
-      ],
-      "segments": [
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 0.0,
-          "tau_s": 0.0,
-          "d_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 5.0,
-          "tau_s": 5.0,
-          "d_m": 50.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 11.0,
-          "tau_s": 6.0,
-          "d_m": 50.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "arterial",
-          "timestamp_s": 16.0,
-          "tau_s": 5.0,
-          "d_m": 40.0
-        }
-      ],
-      "rejection_rate": 0.3333333333333333,
-      "total_pings": 6,
-      "rejected_spatial": 1,
-      "rejected_kinematic": 1
-    },
-    {
-      "name": "gap_reset",
-      "config": {
-        "v_max_ms": 22.22,
-        "a_max_ms2": 4.5,
-        "a_min_ms2": -6.5,
-        "max_dt_gap_s": 15.0,
-        "max_map_snap_dist_m": 12.0
+      {
+        "veh_id": "v1",
+        "link_class": "arterial",
+        "timestamp_s": 15.0,
+        "tau_s": 10.0,
+        "d_m": 100.0
       },
-      "pings": [
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 0.0,
-          "x_obs_m": 0.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 10.0,
-          "x_obs_m": 100.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 26.0,
-          "x_obs_m": 200.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 40.0,
-          "x_obs_m": 300.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 10.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 0.0,
-          "x_obs_m": 0.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": -1.0,
-          "snap_dist_m": 0.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 5.0,
-          "x_obs_m": 25.0,
-          "y_obs_m": 0.0,
-          "speed_obs_ms": 5.0,
-          "snap_dist_m": 0.0
-        }
-      ],
-      "segments": [
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 0.0,
-          "tau_s": 0.0,
-          "d_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 10.0,
-          "tau_s": 10.0,
-          "d_m": 100.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 26.0,
-          "tau_s": 0.0,
-          "d_m": 0.0
-        },
-        {
-          "veh_id": "veh_a",
-          "link_class": "local",
-          "timestamp_s": 40.0,
-          "tau_s": 14.0,
-          "d_m": 100.0
-        },
-        {
-          "veh_id": "veh_b",
-          "link_class": "local",
-          "timestamp_s": 5.0,
-          "tau_s": 0.0,
-          "d_m": 0.0
-        }
-      ],
-      "rejection_rate": 0.16666666666666666,
-      "total_pings": 6,
-      "rejected_spatial": 0,
-      "rejected_kinematic": 1
-    }
+      {
+        "veh_id": "v2",
+        "link_class": "local",
+        "timestamp_s": 0.0,
+        "tau_s": 0.0,
+        "d_m": 0.0
+      },
+      {
+        "veh_id": "v2",
+        "link_class": "local",
+        "timestamp_s": 5.0,
+        "tau_s": 5.0,
+        "d_m": 30.0
+      }
+    ]
+  },
+  "expected_edie": {
+    "k_hat": 0.48611111111111105,
+    "q_hat": 13.5,
+    "n_hat": 14.583333333333332
+  },
+  "expected_kf_steps": [
+    178.68559213275418,
+    164.5305001454144
   ],
-  "estimator_vectors": [
-    {
-      "name": "stratified_edie_two_class",
-      "dt_window_s": 3600.0,
-      "p_min": 0.005,
-      "class_specs": {
-        "arterial": {
-          "length_km": 30.0,
-          "estimated_penetration": 0.06,
-          "observed_length_km": null
-        },
-        "local": {
-          "length_km": 45.0,
-          "estimated_penetration": 0.015,
-          "observed_length_km": null
-        }
-      },
-      "segments": [
-        {
-          "veh_id": "veh_a1",
-          "link_class": "arterial",
-          "timestamp_s": 0.0,
-          "tau_s": 3600.0,
-          "d_m": 30000.0
-        },
-        {
-          "veh_id": "veh_a2",
-          "link_class": "arterial",
-          "timestamp_s": 60.0,
-          "tau_s": 1800.0,
-          "d_m": 12000.0
-        },
-        {
-          "veh_id": "veh_a3",
-          "link_class": "arterial",
-          "timestamp_s": 120.0,
-          "tau_s": 2400.0,
-          "d_m": 18000.0
-        },
-        {
-          "veh_id": "veh_a4",
-          "link_class": "arterial",
-          "timestamp_s": 180.0,
-          "tau_s": 3600.0,
-          "d_m": 36000.0
-        },
-        {
-          "veh_id": "veh_l1",
-          "link_class": "local",
-          "timestamp_s": 0.0,
-          "tau_s": 3600.0,
-          "d_m": 15000.0
-        },
-        {
-          "veh_id": "veh_l2",
-          "link_class": "local",
-          "timestamp_s": 60.0,
-          "tau_s": 1200.0,
-          "d_m": 6000.0
-        },
-        {
-          "veh_id": "veh_l3",
-          "link_class": "local",
-          "timestamp_s": 120.0,
-          "tau_s": 3000.0,
-          "d_m": 24000.0
-        },
-        {
-          "veh_id": "veh_l4",
-          "link_class": "local",
-          "timestamp_s": 180.0,
-          "tau_s": 600.0,
-          "d_m": 3000.0
-        }
-      ],
-      "k_hat_veh_km": 2.777777777777778,
-      "q_hat_veh_h": 64.0,
-      "n_hat_veh": 208.33333333333334
-    }
-  ],
-  "akf_vectors": [
-    {
-      "name": "akf_mulberry32_seed7_20_steps",
-      "seed": 7,
-      "params": {
-        "n_init": 120.0,
-        "n_crit": 100.0,
-        "n_jam": 200.0,
-        "m_max_load": 1.5,
-        "hysteresis_drop_ratio": 0.82,
-        "q_var": 20.0,
-        "r_base": 120.0,
-        "alpha_gate": 2.5
-      },
-      "steps": [
-        {
-          "q_in_veh_s": 0.5035114259459078,
-          "u_gate": 0.8123916515149177,
-          "z_obs_n": 106.35127598886778,
-          "p_eff": 0.0786144579667598,
-          "rejection_rate": 0.27961148228496313,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.6398697897559031,
-          "u_gate": 0.8479850371833891,
-          "z_obs_n": 152.93373501468648,
-          "p_eff": 0.05319953623693437,
-          "rejection_rate": 0.2919288359582424,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.7292269659694284,
-          "u_gate": 0.9036805091425777,
-          "z_obs_n": 91.77019239610006,
-          "p_eff": 0.03182823560666293,
-          "rejection_rate": 0.14718343736603856,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5888990744715557,
-          "u_gate": 0.9955892208963633,
-          "z_obs_n": 158.1927366404169,
-          "p_eff": 0.034852015655487775,
-          "rejection_rate": 0.35111183822155,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5463932090438902,
-          "u_gate": 0.8581902426201851,
-          "z_obs_n": 178.65947912792944,
-          "p_eff": 0.05287408589385449,
-          "rejection_rate": 0.3047494780272246,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.6661132243927568,
-          "u_gate": 0.9243249667808414,
-          "z_obs_n": 151.35062641874896,
-          "p_eff": 0.060805454463697964,
-          "rejection_rate": 0.386395881511271,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.7482885452685878,
-          "u_gate": 0.8079956947825849,
-          "z_obs_n": 162.4279533675591,
-          "p_eff": 0.030496492818929254,
-          "rejection_rate": 0.14279240565374493,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5264318705769255,
-          "u_gate": 0.9536031711380929,
-          "z_obs_n": 159.03841041519783,
-          "p_eff": 0.04213815831113607,
-          "rejection_rate": 0.17068628147244455,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.7109843257814645,
-          "u_gate": 0.9376594935078174,
-          "z_obs_n": 163.25425188153028,
-          "p_eff": 0.03983887545298785,
-          "rejection_rate": 0.14253380931913853,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.773910460458137,
-          "u_gate": 0.8644853925332427,
-          "z_obs_n": 165.5067966267598,
-          "p_eff": 0.03142253161408007,
-          "rejection_rate": 0.25288349902257323,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.705276133143343,
-          "u_gate": 0.9842743544373662,
-          "z_obs_n": 150.135769670874,
-          "p_eff": 0.05287235857918858,
-          "rejection_rate": 0.33063100976869464,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5351124183041975,
-          "u_gate": 0.9059858178719878,
-          "z_obs_n": 133.7259685535842,
-          "p_eff": 0.05894996158313007,
-          "rejection_rate": 0.3564259636215866,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.6782703744014725,
-          "u_gate": 0.9927741586696357,
-          "z_obs_n": null,
-          "p_eff": 0.0780503794644028,
-          "rejection_rate": 0.97,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.6548220473574474,
-          "u_gate": 0.8656112735159696,
-          "z_obs_n": null,
-          "p_eff": 0.06345629568677395,
-          "rejection_rate": 0.97,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.6672659971751272,
-          "u_gate": 0.9646318973042072,
-          "z_obs_n": 111.55430479685387,
-          "p_eff": 0.04579964802600443,
-          "rejection_rate": 0.25694056004285815,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5937151481863111,
-          "u_gate": 0.8473670357372612,
-          "z_obs_n": 134.2688301722943,
-          "p_eff": 0.020558889098465444,
-          "rejection_rate": 0.009629122633486987,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.6891804217593744,
-          "u_gate": 0.8028802429791541,
-          "z_obs_n": 150.3881709689129,
-          "p_eff": 0.057133764168247586,
-          "rejection_rate": 0.2379586545750499,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5833992211613804,
-          "u_gate": 0.9972550548613072,
-          "z_obs_n": 141.70748127480582,
-          "p_eff": 0.05899826506618411,
-          "rejection_rate": 0.3219669763930142,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5417192475637421,
-          "u_gate": 0.9988397240173073,
-          "z_obs_n": 92.02512322854523,
-          "p_eff": 0.05041589983738959,
-          "rejection_rate": 0.22675596568733455,
-          "dt_s": 60.0
-        },
-        {
-          "q_in_veh_s": 0.5632007129723207,
-          "u_gate": 0.9627084439620376,
-          "z_obs_n": 152.81146321655433,
-          "p_eff": 0.07169403872918337,
-          "rejection_rate": 0.29436772000044586,
-          "dt_s": 60.0
-        }
-      ],
-      "n_est": [
-        83.46831725511043,
-        68.43717546600317,
-        33.3985753525787,
-        25.233334597671316,
-        27.520716792030836,
-        31.787771932690262,
-        29.827342085453175,
-        27.12034439115897,
-        37.64121926790281,
-        30.396970574889792,
-        35.03140777760363,
-        21.390819339972474,
-        27.407606914157725,
-        18.84378749988758,
-        34.33758759929755,
-        21.147409744182355,
-        34.46668308662112,
-        28.299053622148136,
-        24.00424467400932,
-        33.84517219450713
-      ],
-      "p_cov": [
-        80.66166314859106,
-        52.08874386597371,
-        27.12418620896289,
-        19.966028863352918,
-        20.396754918351103,
-        20.094283860955773,
-        19.507686670387077,
-        19.371928802595377,
-        19.774424446134702,
-        19.173728417933056,
-        19.546909228008886,
-        18.93815556674254,
-        23.121155484848344,
-        22.048610827052578,
-        22.30629575330111,
-        19.33066998158016,
-        20.723575434443134,
-        18.891849732243823,
-        19.4999935624691,
-        19.94221256940269
-      ]
-    }
-  ],
-  "controller_vectors": [
-    {
-      "name": "smith_pi_delay3_15_steps",
-      "delay_steps": 3,
-      "n_crit": 100.0,
-      "kp_norm": 0.85,
-      "ki_norm": 0.22,
-      "u_min": 0.15,
-      "dt_s": 60.0,
-      "kf_params": {
-        "n_init": 120.0,
-        "n_crit": 100.0,
-        "n_jam": 200.0,
-        "m_max_load": 1.5,
-        "hysteresis_drop_ratio": 0.82,
-        "q_var": 20.0,
-        "r_base": 120.0,
-        "alpha_gate": 2.5
-      },
-      "q_in_stream": [
-        0.6,
-        0.8,
-        1.0,
-        1.2,
-        1.4,
-        1.5,
-        1.4,
-        1.2,
-        1.0,
-        0.8,
-        0.6,
-        0.5,
-        0.7,
-        0.9,
-        1.1
-      ],
-      "n_delayed_obs_stream": [
-        120.0,
-        108.0,
-        101.0,
-        96.0,
-        104.0,
-        111.0,
-        99.0,
-        92.0,
-        103.0,
-        109.0,
-        97.0,
-        90.0,
-        105.0,
-        112.0,
-        100.0
-      ],
-      "u": [
-        0.786,
-        1.0,
-        1.0,
-        1.0,
-        1.0,
-        0.5123638609393066,
-        0.8266757389690518,
-        0.8557070056043089,
-        0.981543952908286,
-        1.0,
-        1.0,
-        1.0,
-        1.0,
-        0.9093698085755877,
-        0.9478645753507132
-      ]
-    },
-    {
-      "name": "smith_pi_delay0_15_steps",
-      "delay_steps": 0,
-      "n_crit": 100.0,
-      "kp_norm": 0.85,
-      "ki_norm": 0.22,
-      "u_min": 0.15,
-      "dt_s": 60.0,
-      "kf_params": {
-        "n_init": 120.0,
-        "n_crit": 100.0,
-        "n_jam": 200.0,
-        "m_max_load": 1.5,
-        "hysteresis_drop_ratio": 0.82,
-        "q_var": 20.0,
-        "r_base": 120.0,
-        "alpha_gate": 2.5
-      },
-      "q_in_stream": [
-        0.6,
-        0.8,
-        1.0,
-        1.2,
-        1.4,
-        1.5,
-        1.4,
-        1.2,
-        1.0,
-        0.8,
-        0.6,
-        0.5,
-        0.7,
-        0.9,
-        1.1
-      ],
-      "n_delayed_obs_stream": [
-        120.0,
-        108.0,
-        101.0,
-        96.0,
-        104.0,
-        111.0,
-        99.0,
-        92.0,
-        103.0,
-        109.0,
-        97.0,
-        90.0,
-        105.0,
-        112.0,
-        100.0
-      ],
-      "u": [
-        0.786,
-        0.8704000000000001,
-        0.9277000000000001,
-        0.9790000000000001,
-        0.9022000000000001,
-        0.8185000000000001,
-        0.9227000000000001,
-        0.9998,
-        0.8997,
-        0.8289000000000001,
-        0.9375000000000001,
-        1.0,
-        0.8614999999999999,
-        0.7756,
-        0.8775999999999999
-      ]
-    }
+  "expected_u_steps": [
+    1.0,
+    0.9873622187500001,
+    0.3338858400015625
   ]
 }

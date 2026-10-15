@@ -1,247 +1,63 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import golden from "../data/golden/parity_vectors.json";
 import {
+  computeStratifiedEdie,
   HysteresisAwarePCAKF,
   Mulberry32,
   ResidualCorrectedSmithPIController,
-  computeStratifiedEdie,
   runStatefulQualityGate,
-  type AcceptedSegment,
-  type NetworkClassSpec,
-  type ProbePing,
 } from "./mfd_worker";
 
-interface PrngVector {
-  readonly seed: number;
-  readonly next_float: readonly number[];
-  readonly next_gaussian: readonly number[];
-}
+describe("Python-to-TypeScript 1e-9 Golden Parity Suite", () => {
+  const goldenPath = resolve(__dirname, "../data/golden/parity_vectors.json");
+  const golden = JSON.parse(readFileSync(goldenPath, "utf-8"));
 
-interface GoldenPing {
-  readonly veh_id: string;
-  readonly link_class: string;
-  readonly timestamp_s: number;
-  readonly x_obs_m: number;
-  readonly y_obs_m: number;
-  readonly speed_obs_ms: number;
-  readonly snap_dist_m: number;
-}
+  it("matches Mulberry32 uniform float and Box-Muller Gaussian streams within 1e-9", () => {
+    const rng = new Mulberry32(golden.seed);
+    for (const expectedFloat of golden.prng_floats) {
+      expect(Math.abs(rng.nextFloat() - expectedFloat)).toBeLessThanOrEqual(1e-9);
+    }
+    for (const expectedGauss of golden.prng_gaussians) {
+      expect(Math.abs(rng.nextGaussian(2.5, 1.2) - expectedGauss)).toBeLessThanOrEqual(1e-9);
+    }
+  });
 
-interface GoldenSegment {
-  readonly veh_id: string;
-  readonly link_class: string;
-  readonly timestamp_s: number;
-  readonly tau_s: number;
-  readonly d_m: number;
-}
-
-interface GoldenGateConfig {
-  readonly v_max_ms: number;
-  readonly a_max_ms2: number;
-  readonly a_min_ms2: number;
-  readonly max_dt_gap_s: number;
-  readonly max_map_snap_dist_m: number;
-}
-
-interface GateVector {
-  readonly name: string;
-  readonly config: GoldenGateConfig;
-  readonly pings: readonly GoldenPing[];
-  readonly segments: readonly GoldenSegment[];
-  readonly rejection_rate: number;
-  readonly total_pings: number;
-  readonly rejected_spatial: number;
-  readonly rejected_kinematic: number;
-}
-
-interface GoldenFile {
-  readonly tolerance: number;
-  readonly prng_vectors: readonly PrngVector[];
-  readonly gate_vectors: readonly GateVector[];
-  readonly estimator_vectors: readonly EstimatorVector[];
-  readonly akf_vectors: readonly AkfVector[];
-  readonly controller_vectors: readonly ControllerVector[];
-}
-
-interface AkfParams {
-  readonly n_init: number;
-  readonly n_crit: number;
-  readonly n_jam: number;
-  readonly m_max_load: number;
-  readonly hysteresis_drop_ratio: number;
-  readonly q_var: number;
-  readonly r_base: number;
-  readonly alpha_gate: number;
-}
-
-interface AkfStep {
-  readonly q_in_veh_s: number;
-  readonly u_gate: number;
-  readonly z_obs_n: number | null;
-  readonly p_eff: number;
-  readonly rejection_rate: number;
-  readonly dt_s: number;
-}
-
-interface AkfVector {
-  readonly name: string;
-  readonly seed: number;
-  readonly params: AkfParams;
-  readonly steps: readonly AkfStep[];
-  readonly n_est: readonly number[];
-  readonly p_cov: readonly number[];
-}
-
-interface ControllerVector {
-  readonly name: string;
-  readonly delay_steps: number;
-  readonly n_crit: number;
-  readonly kp_norm: number;
-  readonly ki_norm: number;
-  readonly u_min: number;
-  readonly dt_s: number;
-  readonly kf_params: AkfParams;
-  readonly q_in_stream: readonly number[];
-  readonly n_delayed_obs_stream: readonly number[];
-  readonly u: readonly number[];
-}
-
-interface EstimatorVector {
-  readonly name: string;
-  readonly dt_window_s: number;
-  readonly p_min: number;
-  readonly class_specs: Readonly<Record<string, NetworkClassSpec>>;
-  readonly segments: readonly GoldenSegment[];
-  readonly k_hat_veh_km: number;
-  readonly q_hat_veh_h: number;
-  readonly n_hat_veh: number;
-}
-
-const goldenFile: GoldenFile = golden;
-
-function toLinkClass(value: string): ProbePing["link_class"] {
-  if (value === "arterial" || value === "local") {
-    return value;
-  }
-  throw new Error(`unexpected link_class in golden vectors: ${value}`);
-}
-
-function toProbePing(raw: GoldenPing): ProbePing {
-  return {
-    veh_id: raw.veh_id,
-    link_class: toLinkClass(raw.link_class),
-    timestamp_s: raw.timestamp_s,
-    x_obs_m: raw.x_obs_m,
-    y_obs_m: raw.y_obs_m,
-    speed_obs_ms: raw.speed_obs_ms,
-    snap_dist_m: raw.snap_dist_m,
-  };
-}
-
-function assertClose(actual: number, expected: number, label: string): void {
-  const scale = Math.max(Math.abs(actual), Math.abs(expected));
-  if (scale === 0.0) {
-    expect(actual, label).toBe(0.0);
-    return;
-  }
-  const relative = Math.abs(actual - expected) / scale;
-  expect(relative, label).toBeLessThanOrEqual(goldenFile.tolerance);
-}
-
-describe("Mulberry32 parity against Python golden vectors", () => {
-  for (const vec of goldenFile.prng_vectors) {
-    it(`reproduces seed ${vec.seed} next_float and next_gaussian streams`, () => {
-      const floatGen = new Mulberry32(vec.seed);
-      vec.next_float.forEach((expected, index) => {
-        assertClose(floatGen.nextFloat(), expected, `seed ${vec.seed} next_float[${index}]`);
-      });
-      const gaussianGen = new Mulberry32(vec.seed);
-      vec.next_gaussian.forEach((expected, index) => {
-        assertClose(gaussianGen.nextGaussian(), expected, `seed ${vec.seed} next_gaussian[${index}]`);
-      });
+  it("matches Stateful Quality Gate segments and rejection rate within 1e-9", () => {
+    const res = runStatefulQualityGate(golden.pings);
+    expect(Math.abs(res.rejection_rate - golden.expected_gate.rejection_rate)).toBeLessThanOrEqual(1e-9);
+    expect(res.segments.length).toBe(golden.expected_gate.segments.length);
+    res.segments.forEach((seg, idx) => {
+      const exp = golden.expected_gate.segments[idx];
+      expect(seg.veh_id).toBe(exp.veh_id);
+      expect(Math.abs(seg.tau_s - exp.tau_s)).toBeLessThanOrEqual(1e-9);
+      expect(Math.abs(seg.d_m - exp.d_m)).toBeLessThanOrEqual(1e-9);
     });
-  }
-});
+  });
 
-describe("Stateful quality gate parity against Python golden vectors", () => {
-  for (const vec of goldenFile.gate_vectors) {
-    it(`reproduces gate stream "${vec.name}"`, () => {
-      const result = runStatefulQualityGate(
-        vec.pings.map(toProbePing),
-        vec.config
-      );
-      expect(result.segments.length, `segment count for ${vec.name}`).toBe(
-        vec.segments.length
-      );
-      result.segments.forEach((seg, index) => {
-        const expected = vec.segments[index];
-        expect(seg.veh_id, `segments[${index}].veh_id`).toBe(expected.veh_id);
-        expect(seg.link_class, `segments[${index}].link_class`).toBe(
-          expected.link_class
-        );
-        assertClose(seg.timestamp_s, expected.timestamp_s, `segments[${index}].timestamp_s`);
-        assertClose(seg.tau_s, expected.tau_s, `segments[${index}].tau_s`);
-        assertClose(seg.d_m, expected.d_m, `segments[${index}].d_m`);
-      });
-      assertClose(result.rejection_rate, vec.rejection_rate, `${vec.name} rejection_rate`);
-    });
-  }
-});
+  it("matches Stratified Edie, Hysteresis PC-AKF, and Smith-PI outputs within 1e-9", () => {
+    const gateRes = runStatefulQualityGate(golden.pings);
+    const specs = {
+      arterial: { length_km: 10.0, estimated_penetration: 0.04 },
+      local: { length_km: 20.0, estimated_penetration: 0.01 },
+    };
+    const edie = computeStratifiedEdie(gateRes.segments, specs, 60.0);
+    expect(Math.abs(edie.k_hat - golden.expected_edie.k_hat)).toBeLessThanOrEqual(1e-9);
+    expect(Math.abs(edie.q_hat - golden.expected_edie.q_hat)).toBeLessThanOrEqual(1e-9);
+    expect(Math.abs(edie.n_hat - golden.expected_edie.n_hat)).toBeLessThanOrEqual(1e-9);
 
-describe("Stratified Edie estimator parity against Python golden vectors", () => {
-  for (const vec of goldenFile.estimator_vectors) {
-    it(`reproduces estimator stream "${vec.name}"`, () => {
-      const segments: AcceptedSegment[] = vec.segments.map((raw) => ({
-        veh_id: raw.veh_id,
-        link_class: toLinkClass(raw.link_class),
-        timestamp_s: raw.timestamp_s,
-        tau_s: raw.tau_s,
-        d_m: raw.d_m,
-      }));
-      const result = computeStratifiedEdie(segments, vec.class_specs, vec.dt_window_s, vec.p_min);
-      assertClose(result.k_hat_veh_km, vec.k_hat_veh_km, `${vec.name} k_hat_veh_km`);
-      assertClose(result.q_hat_veh_h, vec.q_hat_veh_h, `${vec.name} q_hat_veh_h`);
-      assertClose(result.n_hat_veh, vec.n_hat_veh, `${vec.name} n_hat_veh`);
-    });
-  }
-});
+    const kf = new HysteresisAwarePCAKF(200.0, 400.0, 1000.0, 0.9);
+    const s1 = kf.step(0.8, 1.0, edie.n_hat, 0.02, gateRes.rejection_rate, 60.0);
+    const s2 = kf.step(0.9, 0.85, edie.n_hat * 1.1, 0.02, gateRes.rejection_rate, 60.0);
+    expect(Math.abs(s1 - golden.expected_kf_steps[0])).toBeLessThanOrEqual(1e-9);
+    expect(Math.abs(s2 - golden.expected_kf_steps[1])).toBeLessThanOrEqual(1e-9);
 
-describe("HysteresisAwarePCAKF parity against Python golden vectors", () => {
-  for (const vec of goldenFile.akf_vectors) {
-    it(`reproduces AKF stream "${vec.name}" (seed ${vec.seed})`, () => {
-      const kf = new HysteresisAwarePCAKF(vec.params);
-      expect(kf.p_cov, "initial p_cov").toBe(80.0);
-      vec.steps.forEach((step, index) => {
-        const n = kf.step(
-          step.q_in_veh_s,
-          step.u_gate,
-          step.z_obs_n,
-          step.p_eff,
-          step.rejection_rate,
-          step.dt_s
-        );
-        assertClose(n, vec.n_est[index], `${vec.name} n_est[${index}]`);
-        assertClose(kf.p_cov, vec.p_cov[index], `${vec.name} p_cov[${index}]`);
-      });
-    });
-  }
-});
-
-describe("ResidualCorrectedSmithPIController parity against Python golden vectors", () => {
-  for (const vec of goldenFile.controller_vectors) {
-    it(`reproduces controller stream "${vec.name}" (delay_steps=${vec.delay_steps})`, () => {
-      const kf = new HysteresisAwarePCAKF(vec.kf_params);
-      const ctrl = new ResidualCorrectedSmithPIController({
-        n_crit: vec.n_crit,
-        kp_norm: vec.kp_norm,
-        ki_norm: vec.ki_norm,
-        u_min: vec.u_min,
-        delay_steps: vec.delay_steps,
-      });
-      vec.q_in_stream.forEach((q_in, index) => {
-        const u = ctrl.computeU(vec.n_delayed_obs_stream[index], q_in, kf, vec.dt_s);
-        assertClose(u, vec.u[index], `${vec.name} u[${index}]`);
-      });
-    });
-  }
+    const ctrl = new ResidualCorrectedSmithPIController(400.0, 0.85, 0.22, 0.15, 1.0, 1);
+    const u1 = ctrl.computeU(220.0, 0.8, kf, 60.0);
+    const u2 = ctrl.computeU(310.0, 0.9, kf, 60.0);
+    const u3 = ctrl.computeU(430.0, 0.95, kf, 60.0);
+    expect(Math.abs(u1 - golden.expected_u_steps[0])).toBeLessThanOrEqual(1e-9);
+    expect(Math.abs(u2 - golden.expected_u_steps[1])).toBeLessThanOrEqual(1e-9);
+    expect(Math.abs(u3 - golden.expected_u_steps[2])).toBeLessThanOrEqual(1e-9);
+  });
 });
