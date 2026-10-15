@@ -17,12 +17,16 @@ permit redistribution.
 
 **Access and license.** The pNEUMA dataset is distributed by its authors
 (URBAN Mobility Systems Lab, EPFL) to researchers upon registration through the
-official dataset portal. It is offered under Creative Commons Attribution
-(CC-BY) terms: attribution of the source dataset and its authors is required in
-any derivative work or publication. The exact license text distributed with the
-dataset at download time is authoritative — consult and comply with it before
-use, as access conditions (registration, research-use clauses) may apply and
-redistribution may be restricted.
+official dataset portal. It is offered under Creative Commons
+Attribution-NonCommercial-ShareAlike (CC BY-NC-SA 4.0) terms: non-commercial
+academic research only, attribution of the source dataset and its authors is
+required in any derivative work or publication, and derivatives must be shared
+under compatible terms. Raw bulk files are not redistributed in git; the
+automated fetch/checksum verification script processes local slices only. The
+exact license text distributed with the dataset at download time is
+authoritative — consult and comply with it before use, as access conditions
+(registration, research-use clauses) may apply and redistribution may be
+restricted.
 
 **Role in this project.** pNEUMA is used for *offline replay validation of the
 estimation stack only*. Closed-loop perimeter control cannot be actuated on
@@ -53,6 +57,15 @@ JSON result artifacts under `results/` carry an explicit `license` field
 (enforced by `data/schemas/mfd_artifact.schema.json`) so that every published
 result document states its own terms at the point of use. Repository-level code
 licensing is recorded at the repository root.
+
+## Golden parity vectors (`data/golden/`)
+
+**License.** MIT (same as the repository code).
+
+**Role in this project.** Deterministic verification vectors exported from
+seeded `Mulberry32` runs and committed in the repository, used to assert
+numerical parity (tolerance $\le 10^{-9}$) between the Python core and the
+TypeScript browser Web Worker implementation.
 
 ## Placeholder directories
 

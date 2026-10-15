@@ -7,16 +7,18 @@
 # `date-released`) is deliberately omitted here. The canonical citation
 # identity of a checkout is its Git commit hash, not a release tag.
 cff-version: 1.2.0
+title: "PerimeterFlow: Bias-Aware MFD-Based Macroscopic Traffic State Estimation and Latency-Compensated Perimeter Control"
 message: "If you use PerimeterFlow in your research, please cite this software."
 type: software
-title: PerimeterFlow
 authors:
   - family-names: Jalilian
     given-names: Seyed Milad
+    affiliation: "University of Naples Federico II"
 repository-code: "https://github.com/seyed-milad-jalilian/perimeterflow"
+license: MIT
 keywords:
-  - macroscopic fundamental diagram
-  - perimeter control
-  - traffic state estimation
-  - sparse probe data
-  - Kalman filter
+  - Macroscopic Fundamental Diagram
+  - Perimeter Control
+  - Horvitz-Thompson Estimator
+  - Adaptive Kalman Filter
+  - Smith Predictor
