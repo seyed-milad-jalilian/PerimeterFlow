@@ -1,75 +1,31 @@
-# PerimeterFlow
+# PerimeterFlow: Bias-Aware MFD State Estimation and Latency-Compensated Perimeter Control
 
-## The Scientific Question
+## Research Question
+To what extent do sparse probe penetration ($1\% \le p \le 10\%$), topological arterial corridor bias ($4:1$), GPS multipath outliers, Markovian burst dropouts, and cloud pipeline latency ($\tau_d \in \{0\text{s}, 30\text{s}, 60\text{s}\}$) degrade Macroscopic Fundamental Diagram (MFD) accumulation estimation and feedback perimeter gating, and what is the isolated contribution of each defensive layer?
 
-To what extent do sparse probe penetration (1%–10%), topological corridor selection bias, GPS multipath outliers, burst dropouts, and telemetry pipeline latency (τd ∈ {0 s, 30 s, 60 s}) degrade MFD state estimation and feedback perimeter control — and what is the isolated contribution of each defensive layer (stateful kinematic gating, stratified Horvitz-Thompson estimation with hysteresis PC-AKF, and residual-corrected Smith-PI control)?
+## Architecture & Methodology
+1. **Stateful Anchor-Preserving Kinematic Quality Gate (`src/perimeterflow/quality_gate.py`):** Evaluates velocity and acceleration strictly against the last accepted valid ping per vehicle, preventing isolated GPS multipath jumps from invalidating subsequent valid observations.
+2. **Stratified Link-Class Horvitz-Thompson Edie Estimator (`src/perimeterflow/estimators.py`):** Corrects spatial selection bias across arterial corridors and local streets using class length scaling and boundary detector anchor counts.
+3. **Two-Branch Hysteresis PC-AKF (`src/perimeterflow/estimators.py`):** Distinguishes loading vs. unloading network production capacity and dynamically inflates observation noise covariance $R_t$ via the gate rejection rate $\rho_{\text{reject}}(t)$.
+4. **Residual-Corrected Smith-PI Controller (`src/perimeterflow/controllers.py`):** Compensates telemetry pipeline delay via forward MFD conservation rollout over past gating actions, reducing strictly to a normalized PI controller at $\tau_d = 0\text{s}$.
 
-The hypotheses (H1–H4), the strict calibration/evaluation seed partition (seeds 1–10 vs. 11–40), and the non-parametric inference protocol (paired Hodges-Lehmann, Cliff's delta, Wilcoxon signed-rank with Holm-Bonferroni correction) are **pre-registered** in [`docs/ANALYSIS_PLAN.md`](docs/ANALYSIS_PLAN.md) before any execution.
+## Three-Tier Reproducibility Protocol
+- **Tier 1 (Laptop Quick Verification, < 5 min):**
+  ```bash
+  make test
+  make parity
+  make reproduce-small
+  ```
+- **Tier 2 (Full Pre-Registered Calibration & 30-Seed Evaluation Sweep):**
+  ```bash
+  make calibrate
+  make sweep
+  make report
+  ```
+- **Tier 3 (Cloud-Native Kubernetes `k3s` Parallel IndexedJob):**
+  ```bash
+  kubectl apply -f deploy/k8s-indexed-job.yaml
+  ```
 
-## System Architecture
-
-```
-[SUMO replay / pNEUMA] ──► [4:1 arterial probe bias + GPS noise + 3% spikes + burst dropouts]
-                                    │
-                                    ▼
-              [Stateful kinematic quality gate (anchor-based, sequential)]
-                                    │
-                                    ▼
-              [Stratified Horvitz-Thompson Edie estimator]
-                                    │
-                                    ▼
-              [Two-branch Hysteresis PC-AKF (R_t inflated by ρ_reject(t))]
-                                    │
-                                    ▼
-              [Residual-corrected Smith-PI perimeter controller]
-                                    │
-                                    ▼
-              [Schema-validated JSON artifact + automated IEEE report]
-```
-
-Determinism guarantee: the `Mulberry32` 32-bit PRNG is implemented bit-identically in Python (`src/perimeterflow/prng.py`) and TypeScript (`web_worker/mfd_worker.ts`); golden parity vectors must agree to 1e-9 (`make parity`).
-
-## Integrity Rules
-
-1. **No fabricated numbers.** Until real episodes run, every exported artifact carries `"status": "planned"` with all metric fields `null`. Sweeps emit `"results-unreviewed"`; only CI-reproduced reruns promote to `"reproduced-in-ci"`.
-2. **Known ground truth.** The two-reservoir replay engine integrates accumulation from known inflows/outflows, so N(t) is 100% known and every estimator error is exactly measurable.
-3. **Frozen evaluation partition.** All gains and hyperparameters are tuned exclusively on seeds 1–10; seeds 11–40 are touched only by `make sweep`.
-4. **No manual numbers in the report.** Every metric in `report/main.tex` is injected via LaTeX macros generated from `results/ensemble.json` (`report/render_tex_macros.py`), rendering `[PENDING SWEEP]` when nothing has run.
-
-## Three-Tier Reproduction
-
-Tier 1 — laptop smoke run (minutes, plumbing check only, never for claims):
-
-```bash
-make reproduce-small
-```
-
-Tier 2 — containerized full sweep (calibrate on seeds 1–10, evaluate on seeds 11–40):
-
-```bash
-docker build -f deploy/Dockerfile -t perimeterflow .
-docker run --rm -v "$PWD/results:/out" perimeterflow \
-  calibrate --config configs/calibrate_seeds.yaml --output /out/calibrated_params.json
-docker run --rm -v "$PWD/results:/out" perimeterflow \
-  sweep --config configs/evaluate_seeds.yaml --params /out/calibrated_params.json --output /out/ensemble.json
-```
-
-Tier 3 — k3s IndexedJob, 30 evaluation seeds in parallel (4 pods, 2 Gi limit each):
-
-```bash
-kubectl apply -f deploy/k8s-indexed-job.yaml
-```
-
-Local automation entry points: `make test`, `make parity`, `make network`, `make sweep`, `make report`.
-
-## Data
-
-pNEUMA (naturalistic drone trajectories of Athens) is used only for offline estimation validation (`validate-pneuma`). Licenses, access procedure, and citations: [`DATA.md`](DATA.md).
-
-## Limitations
-
-See [`docs/THREATS_TO_VALIDITY.md`](docs/THREATS_TO_VALIDITY.md). Notably: closed-loop gating cannot be actuated on offline naturalistic logs; boundary loop detectors remain necessary to calibrate class penetration rates; the aggregate replay engine shares the MFD functional form with the filter model (deliberately exercised under ±20% misspecification, but it is not microsimulation).
-
-## Citation
-
-[`CITATION.cff`](CITATION.cff).
+## License
+Code and simulation manifests are licensed under MIT (`CITATION.cff`). Naturalistic validation metadata follows `DATA.md`.

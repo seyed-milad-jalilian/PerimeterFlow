@@ -1,41 +1,33 @@
-# PerimeterFlow — virtual uv project.
-#
-# This is deliberately a VIRTUAL project ([tool.uv] package = false): uv manages
-# and locks dependencies, but the package itself is never built or installed.
-# Tests import the package directly from src/ via [tool.pytest.ini_options].
-#
-# By project rule, NO version field is assigned anywhere in this file.
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "perimeterflow"
-# PEP 621 demands `version` or an explicit dynamic declaration; per project
-# rules no version number is assigned anywhere, so version is declared
-# dynamic and never given a value (the project is virtual and never built).
-dynamic = ["version"]
-requires-python = ">=3.12"
+version = "0.0.0"
+description = "Bias-Aware MFD-Based Macroscopic Traffic State Estimation and Latency-Compensated Perimeter Control"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Seyed Milad Jalilian", email = "contact@miladjalilian.me" }
+]
 dependencies = [
-    "pyyaml",
+  "numpy>=1.26.0",
+  "scipy>=1.12.0",
+  "pyyaml>=6.0.1",
+  "jsonschema>=4.21.0",
+  "matplotlib>=3.8.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "jsonschema",
-    "hypothesis",
-    "ruff",
-]
-# Optional closed-loop simulation stack (SUMO + TraCI). These are NEVER
-# required for tests or the pure-Python replay pipeline; install explicitly
-# with `uv sync --extra sumo` on machines where the eclipse-sumo wheel is
-# wanted. `network_gen` and `traci_runner` import traci/sumolib lazily inside
-# functions and degrade gracefully when SUMO is absent.
-sumo = [
-    "eclipse-sumo",
-    "traci",
+  "pytest>=8.0.0",
+  "hypothesis>=6.98.0",
 ]
 
-[tool.uv]
-package = false
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

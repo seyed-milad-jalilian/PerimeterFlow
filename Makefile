@@ -4,33 +4,31 @@ PYTHON := uv run python
 PYTEST := uv run pytest
 
 init-planned:
-	$(PYTHON) -m perimeterflow.cli init-planned --config configs/evaluate_seeds.yaml --output results/ensemble.json
-	$(PYTHON) report/render_tex_macros.py results/ensemble.json report/generated_metrics.tex
+	$(PYTHON) -c "from pathlib import Path; from perimeterflow.stats_eval import write_planned_skeleton_artifact; write_planned_skeleton_artifact(Path('results/ensemble.json'), Path('configs/evaluate_seeds.yaml'))"
+	$(PYTHON) report/render_tex_macros.py
 
 test: init-planned
 	$(PYTEST) tests/ -v
 
 parity:
-	$(PYTHON) -m perimeterflow.cli export-golden data/golden/parity_vectors.json
-	cd web_worker && npx vitest run
+	$(PYTHON) -m perimeterflow.cli --export-golden data/golden/parity_vectors.json
+	npx vitest run web_worker/parity.test.ts
 
 reproduce-small:
-	$(PYTHON) -m perimeterflow.cli sweep --config configs/small_repro.yaml --output results/small_repro.json
+	$(PYTHON) -m perimeterflow.cli --config configs/small_repro.yaml --output results/small_repro.json
 
 calibrate:
-	$(PYTHON) -m perimeterflow.cli calibrate --config configs/calibrate_seeds.yaml --output results/calibrated_params.json
+	$(PYTHON) -m perimeterflow.cli --config configs/calibrate_seeds.yaml --mode calibrate --output results/calibrated_params.json
 
-sweep: calibrate
-	$(PYTHON) -m perimeterflow.cli sweep --config configs/evaluate_seeds.yaml --params results/calibrated_params.json --output results/ensemble.json
-	$(PYTHON) report/render_tex_macros.py results/ensemble.json report/generated_metrics.tex
-	$(PYTHON) report/generate_figures.py results/ensemble.json report/figures
+sweep:
+	$(PYTHON) -m perimeterflow.cli --config configs/evaluate_seeds.yaml --params results/calibrated_params.json --output results/ensemble.json
+	$(PYTHON) report/render_tex_macros.py
+	$(PYTHON) report/generate_figures.py
 
 report:
-	$(PYTHON) report/render_tex_macros.py results/ensemble.json report/generated_metrics.tex
+	$(PYTHON) report/render_tex_macros.py
+	$(PYTHON) report/generate_figures.py
 	cd report && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
 
-network:
-	$(PYTHON) -m perimeterflow.cli generate-network --output results/network
-
 clean:
-	rm -rf build/ dist/ *.egg-info report/*.aux report/*.log report/*.out report/figures
+	rm -rf build/ dist/ *.egg-info report/*.aux report/*.log report/*.out
