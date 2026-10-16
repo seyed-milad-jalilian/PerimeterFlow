@@ -25,3 +25,9 @@ report/generated_metrics.tex
 # Local artifacts (generated at runtime)
 results/*.json
 !results/.gitkeep
+
+site_preview/test-assets/
+site_preview/test-results/
+site_preview/playwright-report/
+site_preview/node_modules/
+downloads/

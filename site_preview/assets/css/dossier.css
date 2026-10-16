@@ -1,0 +1,67 @@
+:root {
+  --ink: oklch(0.20 0.01 260);
+  --ink-dim: oklch(0.45 0.015 260);
+  --paper: oklch(0.985 0.002 260);
+  --accent: oklch(0.52 0.14 230);
+  --warn: oklch(0.60 0.14 75);
+  --grid: oklch(0.88 0.008 260);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  max-width: 78rem;
+  padding: 2rem 1.5rem 4rem;
+  background: oklch(0.94 0.005 260);
+  color: var(--ink);
+  font-family: "Helvetica Neue", Arial, "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
+}
+
+.dossier-header { margin-bottom: 1.5rem; }
+.kicker { text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.7rem; color: var(--ink-dim); margin: 0; }
+h1 { margin: 0.2rem 0 0.4rem; font-size: 1.8rem; }
+h2 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin: 0 0 0.9rem; border-bottom: 1px solid var(--grid); padding-bottom: 0.4rem; }
+h3 { font-size: 0.85rem; margin: 0.8rem 0 0.3rem; color: var(--ink); }
+
+.sheets { display: grid; gap: 1.25rem; }
+
+.sheet {
+  background: var(--paper);
+  border: 1px solid var(--grid);
+  padding: 1.4rem 1.6rem;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+th, td { border: 1px solid var(--grid); padding: 0.3rem 0.5rem; text-align: left; }
+thead th { background: oklch(0.95 0.01 230); }
+
+pre { background: oklch(0.96 0.005 260); border: 1px solid var(--grid); padding: 0.6rem 0.8rem; overflow-x: auto; font-size: 0.78rem; }
+code { font-family: ui-monospace, Consolas, monospace; }
+
+.pending { color: var(--warn); font-size: 0.8rem; font-weight: 600; }
+ul, ol { padding-left: 1.2rem; margin: 0.3rem 0; }
+li { margin: 0.15rem 0; font-size: 0.85rem; }
+p { font-size: 0.85rem; margin: 0.3rem 0; }
+math { font-size: 0.95rem; }
+
+a { color: var(--accent); }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: #fff; padding: 0; max-width: none; }
+  .dossier-header { page-break-after: avoid; }
+  .sheet {
+    border: 1px solid #ccc;
+    margin: 0 0 8mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  a { color: inherit; text-decoration: none; }
+}

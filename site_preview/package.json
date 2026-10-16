@@ -1,0 +1,1 @@
+{"name": "perimeterflow-site-preview", "private": true, "type": "module", "scripts": {"build:worker": "esbuild assets/worker/lab_worker.ts --bundle --format=esm --outfile=assets/worker/lab_worker.js", "test:site": "playwright test"}, "devDependencies": {"@playwright/test": "^1.49.0", "axe-core": "^4.10.0", "esbuild": "^0.24.0"}}

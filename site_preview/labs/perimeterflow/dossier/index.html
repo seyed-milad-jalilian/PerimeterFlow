@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PerimeterFlow — Technical Dossier (4 Sheets)</title>
+<link rel="stylesheet" href="../../assets/css/dossier.css">
+</head>
+<body>
+<header class="dossier-header">
+  <p class="kicker">Visual Technical Dossier · Swiss Grid · 4 Sheets</p>
+  <h1>PerimeterFlow</h1>
+  <p>Bias-aware MFD state estimation and latency-compensated perimeter control. All quantitative claims are pre-registered and pending execution.</p>
+  <p><a href="../index.html">← Back to interactive lab</a></p>
+</header>
+
+<main class="sheets">
+  <section class="sheet" id="sheet-1">
+    <h2>Sheet 1 — Research Question & System Architecture</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Question</h3>
+        <p>How do sparse probe penetration (1–10%), arterial corridor selection bias (4:1), GPS multipath outliers, Markovian burst dropouts, and telemetry latency (τ<sub>d</sub> ∈ {0, 30, 60} s) degrade MFD estimation and perimeter gating — layer by layer?</p>
+        <h3>Hypotheses (Pre-Registered)</h3>
+        <p>H1: Stateful anchor-preserving gating removes spike-induced cascade rejections. H2: Stratified Horvitz–Thompson removes 4:1 corridor accumulation bias. H3: PC-AKF covariance inflation preserves positive-definiteness under sensor blackout. H4: Smith residual correction compensates τ<sub>d</sub> actuation latency.</p>
+      </div>
+      <div>
+        <h3>Pipeline</h3>
+        <ol>
+          <li>SUMO two-reservoir replay / pNEUMA</li>
+          <li>Probe telemetry (bias + noise + spikes + dropouts)</li>
+          <li>Stateful kinematic quality gate</li>
+          <li>Stratified HT Edie estimator</li>
+          <li>Hysteresis PC-AKF</li>
+          <li>Residual-corrected Smith-PI controller</li>
+          <li>Schema-validated artifacts + IEEE report</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="sheet-2">
+    <h2>Sheet 2 — Method Stack & Formulation</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Stratified HT Edie</h3>
+        <math display="block"><mi>N</mi><mo>=</mo><munder><mo>∑</mo><mrow><mi>c</mi></mrow></munder><mfrac><mrow><msub><mi>τ</mi><mi>c</mi></msub><msub><mi>L</mi><mi>c</mi></msub></mrow><mrow><msubsup><mi>L</mi><mi>c</mi><mtext>obs</mtext></msubsup><msub><mi>p</mi><mi>c</mi></msub></mrow></mfrac><mrow><mo fence="true">(</mo><mi>A</mi><mi>T</mi><msup><mo stretchy="false">)</mo><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow></math>
+      </div>
+      <div>
+        <h3>PC-AKF covariance inflation</h3>
+        <math display="block"><msub><mi>R</mi><mi>t</mi></msub><mo>=</mo><msub><mi>R</mi><mn>0</mn></msub><mfrac><msub><mi>p</mi><mtext>ref</mtext></msub><mrow><mi>max</mi><mo>⁡</mo><mo stretchy="false">(</mo><msub><mi>p</mi><mtext>eff</mtext></msub><mo>,</mo><mn>0.005</mn><mo stretchy="false">)</mo></mrow></mfrac><msup><mi>e</mi><mrow><msub><mi>α</mi><mtext>gate</mtext></msub><msub><mi>ρ</mi><mtext>reject</mtext></msub></mrow></msup></math>
+      </div>
+      <div>
+        <h3>Hysteresis branch</h3>
+        <p>Unloading branch engages when <em>N̂<sub>t</sub> < N̂<sub>t−1</sub></em> and <em>N̂<sub>t</sub> > 0.8 N<sub>crit</sub></em>, with <em>M<sub>max,unload</sub> = 0.82 · M<sub>max,load</sub></em>.</p>
+      </div>
+      <div>
+        <h3>Smith-PI residual</h3>
+        <p>Normalized error <em>e<sub>t</sub> = (N<sub>eff</sub> − N<sub>crit</sub>) / N<sub>crit</sub></em>; forward rollout over the actuation ring buffer; residual δ<sub>t−d</sub> = N̂<sub>AKF</sub>(t−d) − N<sub>model</sub>(t−d). At d = 0 it reduces exactly to normalized PI.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="sheet-3">
+    <h2>Sheet 3 — Pre-Registered Experiment & Ablation</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Seed Partition</h3>
+        <p>Calibration: seeds 1–10 (tuning only). Evaluation: seeds 11–40 (frozen, touched only by the sweep).</p>
+        <h3>Perturbations</h3>
+        <p>MFD misspecification ±20%; penetration estimation error ±30%; τ<sub>d</sub> ∈ {0, 30, 60} s.</p>
+        <h3>Inference</h3>
+        <p>Paired Hodges–Lehmann median difference (95% bootstrap CI), Cliff's delta, Wilcoxon signed-rank with Holm–Bonferroni correction.</p>
+      </div>
+      <div>
+        <h3>2×2×2 Ablation Matrix</h3>
+        <table>
+          <thead><tr><th>Gate</th><th>HT</th><th>Smith</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>✗</td><td>✗</td><td>✗</td><td>planned</td></tr>
+            <tr><td>✗</td><td>✗</td><td>✓</td><td>planned</td></tr>
+            <tr><td>✗</td><td>✓</td><td>✗</td><td>planned</td></tr>
+            <tr><td>✗</td><td>✓</td><td>✓</td><td>planned</td></tr>
+            <tr><td>✓</td><td>✗</td><td>✗</td><td>planned</td></tr>
+            <tr><td>✓</td><td>✗</td><td>✓</td><td>planned</td></tr>
+            <tr><td>✓</td><td>✓</td><td>✗</td><td>planned</td></tr>
+            <tr><td>✓</td><td>✓</td><td>✓</td><td>planned</td></tr>
+          </tbody>
+        </table>
+        <p class="pending">[PENDING SWEEP] — metrics render only from schema-validated artifacts after execution.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet" id="sheet-4">
+    <h2>Sheet 4 — Reproduction, Integrity & Citations</h2>
+    <div class="grid-2">
+      <div>
+        <h3>3-Tier Reproduction</h3>
+        <pre><code>make test && make parity && make reproduce-small
+make calibrate && make sweep && make report
+kubectl apply -f deploy/k8s-indexed-job.yaml</code></pre>
+        <h3>Integrity Rules</h3>
+        <ul>
+          <li>No fabricated numbers; planned artifacts carry null metrics.</li>
+          <li>Every metric injected via LaTeX macros from artifacts.</li>
+          <li>1e-9 Python↔TypeScript golden parity enforced in CI.</li>
+          <li>Deterministic Mulberry32 PRNG across both runtimes.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Licenses & Data</h3>
+        <p>Code and simulation manifests: MIT (<code>CITATION.cff</code>). pNEUMA drone trajectories of Athens: offline validation only, per <code>DATA.md</code> access and citation terms.</p>
+        <h3>Threats to Validity</h3>
+        <p>Closed-loop gating is not actuable on offline logs; the replay engine shares the MFD functional form with the filter (exercised under ±20% misspecification); boundary loop detectors remain necessary to calibrate class penetration.</p>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

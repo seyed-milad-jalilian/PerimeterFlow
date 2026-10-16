@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PerimeterFlow — Bias-Aware MFD Estimation Lab</title>
+<link rel="stylesheet" href="../../assets/css/main.css">
+<script type="module" src="../../assets/js/app.js" defer></script>
+</head>
+<body>
+<header class="site-header">
+  <p class="kicker">Interactive Lab · Pre-registered Protocol</p>
+  <h1>PerimeterFlow</h1>
+  <p class="lede">Bias-aware MFD state estimation and latency-compensated perimeter control under sparse probe telemetry.</p>
+  <p id="status-badge" class="badge badge-planned" role="status">Loading artifact status…</p>
+</header>
+
+<nav class="lens-switcher" aria-label="Lens switcher">
+  <button id="lens-science" class="lens-btn lens-active" type="button" aria-pressed="true">Research Science Lens</button>
+  <button id="lens-gitops" class="lens-btn" type="button" aria-pressed="false">Cloud & GitOps Systems Lens</button>
+</nav>
+
+<main>
+  <section id="lens-science-panel" class="lens-panel" aria-label="Research science lens">
+    <h2>Research Question</h2>
+    <p>To what extent do sparse probe penetration (1%–10%), topological arterial corridor bias (4:1), GPS multipath outliers, Markovian burst dropouts, and cloud pipeline latency (τ<sub>d</sub> ∈ {0 s, 30 s, 60 s}) degrade MFD accumulation estimation and feedback perimeter gating — and what is the isolated contribution of each defensive layer?</p>
+
+    <h2>Mathematical Formulation</h2>
+    <div class="math-block">
+      <math display="block">
+        <mi>k</mi><mo>=</mo><mfrac><mrow><msub><mi>τ</mi><mi>c</mi></msub><msub><mi>L</mi><mi>c</mi></msub></mrow><mrow><msubsup><mi>L</mi><mi>c</mi><mtext>obs</mtext></msubsup><msub><mi>p</mi><mi>c</mi></msub><mi>A</mi><mi>T</mi></mrow></mfrac>
+      </math>
+      <p class="math-caption">Stratified Horvitz–Thompson Edie accumulation: class spatial-scale weighting with boundary loop-anchored penetration.</p>
+      <math display="block">
+        <msub><mi>R</mi><mi>t</mi></msub><mo>=</mo><msub><mi>R</mi><mn>0</mn></msub><mfrac><msub><mi>p</mi><mtext>ref</mtext></msub><mrow><mi>max</mi><mo>⁡</mo><mo stretchy="false">(</mo><msub><mi>p</mi><mtext>eff</mtext></msub><mo>,</mo><mn>0.005</mn><mo stretchy="false">)</mo></mrow></mfrac><msup><mi>e</mi><mrow><msub><mi>α</mi><mtext>gate</mtext></msub><msub><mi>ρ</mi><mtext>reject</mtext></msub><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo></mrow></msup>
+      </math>
+      <p class="math-caption">PC-AKF observation covariance inflation under gate rejections and penetration collapse.</p>
+    </div>
+
+    <h2>Pre-Registered Ablation Matrix (2×2×2)</h2>
+    <table class="ablation-table">
+      <caption>All cells are executed only by the pre-registered 30-seed evaluation sweep (seeds 11–40). No results exist yet.</caption>
+      <thead>
+        <tr><th scope="col">Gate</th><th scope="col">Stratified HT</th><th scope="col">Smith-PI</th><th scope="col">Status</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>off</td><td>off</td><td>off</td><td><span class="badge badge-planned">planned</span></td></tr>
+        <tr><td>off</td><td>off</td><td>on</td><td><span class="badge badge-planned">planned</span></td></tr>
+        <tr><td>off</td><td>on</td><td>off</td><td><span class="badge badge-planned">planned</span></td></tr>
+        <tr><td>off</td><td>on</td><td>on</td><td><span class="badge badge-planned">planned</span></td></tr>
+        <tr><td>on</td><td>off</td><td>off</td><td><span class="badge badge-planned">planned</span></td></tr>
+        <tr><td>on</td><td>off</td><td>on</td><td><span class="badge badge-planned">planned</span></td></tr>
+        <tr><td>on</td><td>on</td><td>off</td><td><span class="badge badge-planned">planned</span></td></tr>
+        <tr><td>on</td><td>on</td><td>on</td><td><span class="badge badge-planned">planned</span></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Inference Protocol (Pre-Registered)</h2>
+    <ul>
+      <li>Calibration seeds 1–10 only; evaluation seeds 11–40 frozen.</li>
+      <li>Paired Hodges–Lehmann median difference with 95% bootstrap CI.</li>
+      <li>Cliff's delta effect size; Wilcoxon signed-rank p-values with Holm–Bonferroni correction.</li>
+      <li>MFD misspecification ±20%; penetration estimation error ±30%.</li>
+    </ul>
+  </section>
+
+  <section id="lens-gitops-panel" class="lens-panel lens-hidden" aria-label="Cloud and GitOps systems lens">
+    <h2>Determinism Guarantee</h2>
+    <p>The <code>Mulberry32</code> 32-bit PRNG is implemented bit-identically in Python (<code>src/perimeterflow/prng.py</code>) and TypeScript (<code>web_worker/mfd_worker.ts</code>). Golden parity vectors must agree to a relative tolerance of 1e-9 — enforced by Vitest on every push.</p>
+
+    <h2>Zero-Inline CSP</h2>
+    <p>This page enforces <code>script-src 'self'; style-src 'self'; worker-src 'self'</code>. No inline handlers, no inline styles, no third-party origins. Every interactive computation runs in a same-origin Web Worker.</p>
+
+    <h2>Artifact Provenance</h2>
+    <p>Every exported JSON artifact carries cryptographic provenance: <code>artifact_id</code>, <code>run_id</code>, <code>git_sha</code>, <code>config_sha256</code>, <code>data_sha256</code>, <code>generated_at_utc</code>, and schema-validated <code>status</code>. Pre-execution artifacts carry <code>"status": "planned"</code> with null metrics.</p>
+
+    <h2>Continuous Integration</h2>
+    <ul>
+      <li><code>pytest</code> verification suite (schema, stateful gate, estimators/controllers).</li>
+      <li>Vitest 1e-9 Python↔TypeScript golden parity.</li>
+      <li>JSON Schema validation of every artifact.</li>
+      <li>LaTeX macro generation check (zero hardcoded numbers in the report).</li>
+    </ul>
+  </section>
+
+  <section id="lab" aria-label="Interactive estimator lab">
+    <h2>Interactive Estimator Lab</h2>
+    <p class="badge badge-dryrun">Interactive Mechanics Dry-Run on Reference Sample</p>
+    <p class="lab-note">A deterministic aggregate reference plant with accumulation known by construction is probed through the identical defensive pipeline implemented in the parity-verified worker. Computed live in your browser; it demonstrates mechanics, not research results.</p>
+
+    <form id="lab-controls">
+      <label>Probe penetration p (%)
+        <input type="range" id="ctl-penetration" min="1" max="10" value="5" step="0.5">
+        <output id="out-penetration" for="ctl-penetration">5.0</output>
+      </label>
+      <label>Arterial sampling bias (4:1 = 4)
+        <input type="range" id="ctl-bias" min="1" max="6" value="4" step="0.5">
+        <output id="out-bias" for="ctl-bias">4.0</output>
+      </label>
+      <label>Multipath spike probability (%)
+        <input type="range" id="ctl-spike" min="0" max="10" value="3" step="0.5">
+        <output id="out-spike" for="ctl-spike">3.0</output>
+      </label>
+      <label>Dropout probability (%)
+        <input type="range" id="ctl-dropout" min="0" max="30" value="10" step="1">
+        <output id="out-dropout" for="ctl-dropout">10</output>
+      </label>
+      <label>Pipeline latency (actuation steps of 60 s)
+        <input type="range" id="ctl-delay" min="0" max="2" value="1" step="1">
+        <output id="out-delay" for="ctl-delay">1</output>
+      </label>
+      <label>Penetration estimation error (±%)
+        <input type="range" id="ctl-perr" min="0" max="30" value="0" step="5">
+        <output id="out-perr" for="ctl-perr">0</output>
+      </label>
+      <button type="submit" id="lab-run">Run Dry-Run</button>
+    </form>
+
+    <canvas id="lab-chart" width="920" height="380" role="img" aria-label="Accumulation trace: reference truth, estimator, and critical threshold"></canvas>
+
+    <dl id="lab-metrics" class="metrics-grid">
+      <div><dt>Gate rejection ρ</dt><dd id="m-reject">—</dd></div>
+      <div><dt>NRMSE (dry-run)</dt><dd id="m-nrmse">—</dd></div>
+      <div><dt>Overshoot (Smith-PI)</dt><dd id="m-overshoot">—</dd></div>
+      <div><dt>Overshoot (uncontrolled)</dt><dd id="m-overshoot-unc">—</dd></div>
+      <div><dt>Final gate u</dt><dd id="m-u">—</dd></div>
+    </dl>
+    <p id="lab-disclaimer" class="lab-disclaimer"></p>
+  </section>
+
+  <section aria-label="Three tier reproduction">
+    <h2>3-Tier Reproduction</h2>
+    <div class="tabs" role="tablist" aria-label="Reproduction tiers">
+      <button role="tab" id="tab-1" aria-selected="true" aria-controls="panel-1" type="button">Tier 1 — Laptop</button>
+      <button role="tab" id="tab-2" aria-selected="false" aria-controls="panel-2" type="button">Tier 2 — Full Sweep</button>
+      <button role="tab" id="tab-3" aria-selected="false" aria-controls="panel-3" type="button">Tier 3 — K8s</button>
+    </div>
+    <div id="panel-1" role="tabpanel" aria-labelledby="tab-1"><pre><code>make test && make parity && make reproduce-small</code></pre><p>Minutes-scale plumbing check; never used for claims.</p></div>
+    <div id="panel-2" role="tabpanel" aria-labelledby="tab-2" class="tab-hidden"><pre><code>make calibrate && make sweep && make report</code></pre><p>Calibration on seeds 1–10, evaluation on frozen seeds 11–40.</p></div>
+    <div id="panel-3" role="tabpanel" aria-labelledby="tab-3" class="tab-hidden"><pre><code>kubectl apply -f deploy/k8s-indexed-job.yaml</code></pre><p>30 evaluation seeds as parallel IndexedJob completions (4 pods, 2 Gi each).</p></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>Truthfulness T1–T7 enforced · No result on this page is fabricated · Pre-registered in <code>docs/ANALYSIS_PLAN.md</code></p>
+</footer>
+</body>
+</html>

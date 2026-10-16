@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "artifact_id": "perimeterflow-mfd-ensemble",
+    "run_id": "pending-execution",
+    "git_sha": "b6dd57e6638b56d36e32926ffd7814126865a2ff",
+    "config_sha256": "6609ab034b71674482d1444eaf1f5d23877d213e2f737165fa58296f0aea70b5",
+    "data_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "generated_at_utc": "2026-10-16T00:15:45.156334+00:00",
+    "status": "planned",
+    "mode": "simulation",
+    "calibration_seeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "evaluation_seeds": [
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40
+    ],
+    "license": "MIT"
+  },
+  "summary_table": [
+    {
+      "condition_id": "p02_corridor_delay60_baseline",
+      "penetration_rate": 0.02,
+      "bias_mode": "corridor_biased",
+      "delay_s": 60,
+      "variant": "G0_F0_C0",
+      "n_seeds": 0,
+      "nrmse_median_pct": null,
+      "nrmse_iqr_pct": null,
+      "tnd_median_veh_h": null,
+      "tnd_iqr_veh_h": null
+    },
+    {
+      "condition_id": "p02_corridor_delay60_smith_pi",
+      "penetration_rate": 0.02,
+      "bias_mode": "corridor_biased",
+      "delay_s": 60,
+      "variant": "G1_F1_C1",
+      "n_seeds": 0,
+      "nrmse_median_pct": null,
+      "nrmse_iqr_pct": null,
+      "tnd_median_veh_h": null,
+      "tnd_iqr_veh_h": null
+    }
+  ],
+  "ablation_comparisons": [
+    {
+      "comparison_id": "G0_F0_C0_vs_G1_F1_C1_nrmse",
+      "baseline_variant": "G0_F0_C0",
+      "proposed_variant": "G1_F1_C1",
+      "metric_unit": "pct",
+      "hl_median_diff": null,
+      "ci95_low": null,
+      "ci95_high": null,
+      "cliffs_delta": null,
+      "p_value_raw": null,
+      "p_value_holm": null
+    }
+  ]
+}
