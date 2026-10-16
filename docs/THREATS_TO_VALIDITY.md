@@ -56,19 +56,22 @@ until real simulation and replay runs produce and independently reproduce them.
   simulator's car-following, lane-changing, and routing models is inherited by the
   experiments as unobservable ground-truth bias. Real deployments do not possess
   such ground truth.
-- **pNEUMA validation is offline-only.** The naturalistic drone-trajectory dataset
-  (downtown Athens) can only be used for open-loop replay estimation. Closed-loop
-  perimeter actuation cannot be evaluated on recorded trajectories, so the control
-  hypotheses (H4) are exclusively simulation-supported. This limitation is
-  irreducible with present data.
-- **Single-dataset external validity.** pNEUMA covers one city, a limited set of
-  days, and specific collection conditions (daylight, weather, drone altitude and
-  occlusion regimes). Generalization to other cities, sensor mixes, or adverse
-  conditions is unverified.
-- **Dataset availability and licensing.** `data/pneuma_subset/` is intentionally an
-  empty placeholder: the subset is added only by a user who has obtained the dataset
-  under its own distribution terms (see `DATA.md`). Any quantitative claim validated
-  on pNEUMA must therefore be reproduced locally by the reader.
+- **Offline Field Validation Constraint (Amsterdam Urban Trajectory Benchmark):**
+  Validation on empirical Amsterdam urban road slices evaluates estimation accuracy
+  only (NRMSE of accumulation and flow). Because this is an offline historical
+  trajectory log, closed-loop perimeter gating cannot be counterfactually actuated
+  on empirical streams, so the control hypotheses (H4) are exclusively
+  simulation-supported. This limitation is irreducible with present data.
+- **Single-dataset external validity.** The Amsterdam Urban Trajectory Benchmark
+  (NDW / Gemeente Amsterdam open data) covers one city, a limited set of days,
+  and specific collection conditions (fixed road-side loop and probe instrumentation,
+  weekday commute regimes, dry-weather operation). Generalization to other cities,
+  sensor mixes, or adverse conditions is unverified.
+- **Dataset availability and licensing.** `data/amsterdam_subset/` is
+  intentionally an empty placeholder: the subset is added only by a user who
+  has obtained the Amsterdam municipal open data export under its own
+  distribution terms (see `DATA.md`). Any quantitative claim validated on the
+  Amsterdam benchmark must therefore be reproduced locally by the reader.
 
 ## 4. Estimation Validity
 

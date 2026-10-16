@@ -21,6 +21,7 @@ report/*.out
 report/*.bbl
 report/*.blg
 report/generated_metrics.tex
+report/figures/
 
 # Local artifacts (generated at runtime)
 results/*.json

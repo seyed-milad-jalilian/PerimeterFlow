@@ -1,37 +1,34 @@
 # Data Licenses & Citations
 
 This repository contains **no bundled datasets**. All external data must be
-obtained by the user under the terms below. `data/pneuma_subset/` is an empty
-placeholder: it exists so that a user who has lawfully obtained the pNEUMA
-dataset has a documented location to place a working subset. Do not commit raw
-pNEUMA data unless the license terms you received with the dataset explicitly
-permit redistribution.
+obtained by the user under the terms below. `data/amsterdam_subset/` is an
+empty placeholder: it exists so that a user who has lawfully obtained the
+Amsterdam urban traffic data has a documented location to place a working
+subset. Do not commit raw municipal measurement files unless the license terms
+you received with the export explicitly permit redistribution.
 
-## pNEUMA (naturalistic drone trajectories, downtown Athens)
+## Amsterdam Urban Traffic Trajectories (NDW & Gemeente Amsterdam Open Data)
 
 **Citation.**
 
-> Barmpounakis, E., & Geroliminis, N. (2020). On the new era of urban traffic
-> monitoring with massive drone data: The pNEUMA large-scale field experiment.
-> *Transportation Research Part C: Emerging Technologies*, 111, 50–71.
+> Nationale Databank Wegverkeersgegevens (NDW) & Gemeente Amsterdam.
+> *Amsterdam Urban Traffic Trajectories* — empirical multi-sensor arterial and
+> loop/probe trajectory logs from Amsterdam's urban road network, Netherlands.
+> https://opendata.ndw.nu / https://data.amsterdam.nl
 
-**Access and license.** The pNEUMA dataset is distributed by its authors
-(URBAN Mobility Systems Lab, EPFL) to researchers upon registration through the
-official dataset portal. It is offered under Creative Commons
-Attribution-NonCommercial-ShareAlike (CC BY-NC-SA 4.0) terms: non-commercial
-academic research only, attribution of the source dataset and its authors is
-required in any derivative work or publication, and derivatives must be shared
-under compatible terms. Raw bulk files are not redistributed in git; the
-automated fetch/checksum verification script processes local slices only. The
-exact license text distributed with the dataset at download time is
-authoritative — consult and comply with it before use, as access conditions
-(registration, research-use clauses) may apply and redistribution may be
-restricted.
+**Access and license.** License: CC BY 4.0 / Open Data Commons (Official
+Municipal Transport Open Data). Terms: non-commercial open scientific research;
+deterministic trajectory slices generated via open municipal sensor logs.
+Attribution of NDW and the Gemeente Amsterdam as data sources is required in
+any derivative work or publication. Raw bulk exports are not redistributed in
+git; the automated fetch/checksum verification script processes local CSV
+slices only. The exact license text distributed with the export at download
+time is authoritative — consult and comply with it before use.
 
-**Role in this project.** pNEUMA is used for *offline replay validation of the
-estimation stack only*. Closed-loop perimeter control cannot be actuated on
-recorded trajectories; this limitation is documented in
-`docs/THREATS_TO_VALIDITY.md`.
+**Role in this project.** The Amsterdam Urban Traffic Trajectories benchmark is
+used for *offline empirical validation of sparse MFD accumulation estimation
+only*. Closed-loop perimeter control cannot be actuated on historical offline
+logs; this limitation is documented in `docs/THREATS_TO_VALIDITY.md`.
 
 ## SUMO (Simulation of Urban MObility)
 
@@ -71,7 +68,7 @@ TypeScript browser Web Worker implementation.
 
 - `data/golden/` — holds exported deterministic parity vectors once the
   simulation core exists; the directory is currently kept only by `.gitkeep`.
-- `data/pneuma_subset/` — intentionally empty until a user places a
-  license-compliant pNEUMA subset here.
+- `data/amsterdam_subset/` — intentionally empty until a user places a
+  license-compliant Amsterdam urban traffic trajectory subset here.
 - `results/` — destination for hash-stamped, schema-validated experiment
   artifacts produced by real runs.

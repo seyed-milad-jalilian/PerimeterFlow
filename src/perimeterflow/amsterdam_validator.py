@@ -7,7 +7,7 @@ from .quality_gate import GateConfig, ProbePing, run_stateful_quality_gate
 
 
 @dataclass(frozen=True)
-class PneumaValidationResult:
+class AmsterdamValidationResult:
     slice_id: str
     penetration_rate: float
     nrmse_unstratified_pct: float
@@ -15,17 +15,18 @@ class PneumaValidationResult:
     closed_loop_actuation_supported: bool = False
 
 
-def evaluate_pneuma_trajectory_slice(
+def evaluate_amsterdam_trajectory_slice(
     csv_path: Path,
     penetration_rate: float = 0.03,
-) -> PneumaValidationResult:
+) -> AmsterdamValidationResult:
     """
-    Evaluates offline MFD accumulation estimation accuracy on a pNEUMA trajectory CSV slice.
-    Explicitly enforces that closed-loop perimeter control cannot be counterfactually actuated
-    on historical trajectory logs.
+    Evaluates offline MFD accumulation estimation accuracy on an empirical Amsterdam
+    urban corridor trajectory slice (NDW / Municipal open data). Explicitly enforces
+    that closed-loop perimeter control cannot be counterfactually actuated on
+    historical offline logs.
     """
     if not csv_path.exists():
-        raise FileNotFoundError(f"pNEUMA trajectory slice not found: {csv_path}")
+        raise FileNotFoundError(f"Amsterdam trajectory slice not found: {csv_path}")
 
     pings_by_window: dict[int, list[ProbePing]] = {}
     true_n_by_window: dict[int, float] = {}
@@ -39,13 +40,13 @@ def evaluate_pneuma_trajectory_slice(
             if int(row.get("is_sampled_probe", "1")) == 1:
                 pings_by_window.setdefault(w_idx, []).append(
                     ProbePing(
-                        veh_id=str(row["veh_id"]),
+                        veh_id=str(row["site_id"]),
                         link_class=str(row["link_class"]),
                         timestamp_s=t_s,
-                        x_obs_m=float(row["x_obs_m"]),
-                        y_obs_m=float(row["y_obs_m"]),
-                        speed_obs_ms=float(row["speed_obs_ms"]),
-                        snap_dist_m=float(row.get("snap_dist_m", 1.0)),
+                        x_obs_m=float(row["x_m"]),
+                        y_obs_m=float(row["y_m"]),
+                        speed_obs_ms=float(row["speed_kmh"]) / 3.6,
+                        snap_dist_m=0.0,
                     )
                 )
 
@@ -81,7 +82,7 @@ def evaluate_pneuma_trajectory_slice(
     nrmse_u = (math.sqrt(sum(e ** 2 for e in err_unstrat) / len(trues)) / span) * 100.0
     nrmse_p = (math.sqrt(sum(e ** 2 for e in err_prop) / len(trues)) / span) * 100.0
 
-    return PneumaValidationResult(
+    return AmsterdamValidationResult(
         slice_id=csv_path.stem,
         penetration_rate=penetration_rate,
         nrmse_unstratified_pct=nrmse_u,

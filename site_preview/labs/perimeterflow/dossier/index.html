@@ -27,7 +27,7 @@
       <div>
         <h3>Pipeline</h3>
         <ol>
-          <li>SUMO two-reservoir replay / pNEUMA</li>
+          <li>SUMO two-reservoir replay / Amsterdam urban traffic benchmark</li>
           <li>Probe telemetry (bias + noise + spikes + dropouts)</li>
           <li>Stateful kinematic quality gate</li>
           <li>Stratified HT Edie estimator</li>
@@ -110,7 +110,7 @@ kubectl apply -f deploy/k8s-indexed-job.yaml</code></pre>
       </div>
       <div>
         <h3>Licenses & Data</h3>
-        <p>Code and simulation manifests: MIT (<code>CITATION.cff</code>). pNEUMA drone trajectories of Athens: offline validation only, per <code>DATA.md</code> access and citation terms.</p>
+        <p>Code and simulation manifests: MIT (<code>CITATION.cff</code>). Amsterdam Urban Traffic Trajectories (NDW & Gemeente Amsterdam open data, Amsterdam NL): offline validation only, per <code>DATA.md</code> access and citation terms.</p>
         <h3>Threats to Validity</h3>
         <p>Closed-loop gating is not actuable on offline logs; the replay engine shares the MFD functional form with the filter (exercised under ±20% misspecification); boundary loop detectors remain necessary to calibrate class penetration.</p>
       </div>

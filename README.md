@@ -28,4 +28,4 @@ To what extent do sparse probe penetration ($1\% \le p \le 10\%$), topological a
   ```
 
 ## License
-Code and simulation manifests are licensed under MIT (`CITATION.cff`). Naturalistic validation metadata follows `DATA.md`.
+Code and simulation manifests are licensed under MIT (`CITATION.cff`). External validation dataset metadata follows `DATA.md`.

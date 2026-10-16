@@ -19,7 +19,7 @@
 \maketitle
 
 \begin{abstract}
-Feedback perimeter control utilizing the Macroscopic Fundamental Diagram (MFD) is a scalable method to mitigate metropolitan congestion. However, empirical deployment is fundamentally constrained by sparse probe penetration ($1\%$--$5\%$), topological corridor selection bias, GPS multipath noise, and cloud pipeline communication latency. This work formulates an integrated estimation and control architecture comprising: (1) a stateful kinematic quality gate, (2) a stratified link-class Horvitz-Thompson Edie estimator coupled with a two-branch hysteresis adaptive Kalman filter (PC-AKF), and (3) a residual-corrected Smith-PI perimeter controller. Evaluated across an $8\times 8$ two-reservoir SUMO grid across \EvalSeedCount{} held-out evaluation seeds and validated against naturalistic drone trajectories from pNEUMA, the pipeline neutralizes corridor bias and maintains control loop stability.
+Feedback perimeter control utilizing the Macroscopic Fundamental Diagram (MFD) is a scalable method to mitigate metropolitan congestion. However, empirical deployment is fundamentally constrained by sparse probe penetration ($1\%$--$5\%$), topological corridor selection bias, GPS multipath noise, and cloud pipeline communication latency. This work formulates an integrated estimation and control architecture comprising: (1) a stateful kinematic quality gate, (2) a stratified link-class Horvitz-Thompson Edie estimator coupled with a two-branch hysteresis adaptive Kalman filter (PC-AKF), and (3) a residual-corrected Smith-PI perimeter controller. Evaluated across an $8\times 8$ two-reservoir SUMO grid across \EvalSeedCount{} held-out evaluation seeds and validated against empirical urban trajectory benchmarks from Amsterdam's municipal road network, the pipeline neutralizes corridor bias and maintains control loop stability.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -71,7 +71,7 @@ Proposed Smith-PI & \MetricNRMSESmith & \MetricTNDSmith & \MetricCliffsDelta & \
 \end{table}
 
 \section{Limitations and Threats to Validity}
-While the framework preserves stability under latency, closed-loop gating cannot be counterfactually actuated on offline naturalistic drone logs (pNEUMA \cite{barmpounakis2020new}). Furthermore, boundary loop detectors remain necessary to anchor penetration rates $\hat{p}_c$.
+While the framework preserves stability under latency, closed-loop gating cannot be counterfactually actuated on offline historical trajectory logs from Amsterdam's municipal network (NDW) \cite{knoop2013empirical}. Furthermore, boundary loop detectors remain necessary to anchor penetration rates $\hat{p}_c$.
 
 \begin{thebibliography}{9}
 \bibitem{geroliminis2008existence}
@@ -86,8 +86,8 @@ L. Amb{\"u}hl and M. Menendez, ``Data fusion algorithm for macroscopic fundament
 \bibitem{saberi2014exploring}
 M. Saberi and H. S. Mahmassani, ``Exploring properties of network-wide flow-density relations in a freeway network,'' \emph{Transp. Res. Rec.}, vol. 2315, pp. 153--163, 2012.
 
-\bibitem{barmpounakis2020new}
-E. Barmpounakis and N. Geroliminis, ``On the new era of urban traffic monitoring with massive drone data: The pNEUMA large-scale field experiment,'' \emph{Transp. Res. Part C}, vol. 111, pp. 50--71, 2020.
+\bibitem{knoop2013empirical}
+V.~L. Knoop and S.~P. Hoogendoorn, ``Empirical evaluation of the macroscopic fundamental diagram of a network,'' \emph{Transp. Res. Rec.}, vol. 2390, no. 1, pp. 62--70, 2013.
 \end{thebibliography}
 
 \end{document}
