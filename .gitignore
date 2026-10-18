@@ -1,4 +1,6 @@
 p1.md
+debug.log
+*.log
 
 # Python
 __pycache__/
