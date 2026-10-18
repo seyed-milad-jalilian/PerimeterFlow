@@ -13,12 +13,38 @@ class EpisodeConfig:
     seed: int
     penetration_rate: float = 0.02
     bias_mode: str = "corridor_biased"  # 'uniform' | 'corridor_biased'
-    delay_s: int = 60
+    delay_s: float = 60.0
     variant: str = "G1_F1_C1"           # G{0,1}_F{0,1}_C{0,1}
     mfd_misspec_ratio: float = 0.0      # -0.20, 0.0, +0.20
     pen_est_error_ratio: float = 0.0    # -0.30, 0.0, +0.30
     kp_norm: float = 0.85
     ki_norm: float = 0.22
+
+
+class FractionalObservationDelayBuffer:
+    """
+    Telemetry delay buffer supporting fractional (sub-window) observation delays.
+
+    A delay of tau_d = (d_int + theta) * dt is applied by linearly interpolating the
+    observation history: z_del(t) = (1 - theta) z(t - d_int) + theta z(t - d_int - 1),
+    with all pre-episode history clamped to the initial accumulation n_init
+    (z(s) = n_init for s < 0). At theta = 0 the delivered value is exactly
+    z(t - d_int), matching the legacy integer-step buffer.
+    """
+
+    def __init__(self, delay_steps: int, delay_frac: float, n_init: float):
+        self.delay_steps = max(0, int(delay_steps))
+        self.delay_frac = float(delay_frac)
+        self._history: list[float] = [float(n_init)]
+
+    def push_and_read(self, z_t: float) -> float:
+        self._history.append(z_t)
+        t_now = len(self._history) - 2
+        s_recent = t_now - self.delay_steps
+        i_recent = s_recent + 1 if s_recent >= 0 else 0
+        i_prev = s_recent if s_recent >= 1 else 0
+        return (1.0 - self.delay_frac) * self._history[i_recent] + self.delay_frac * self._history[i_prev]
+
 
 
 @dataclass(frozen=True)
@@ -27,7 +53,7 @@ class EpisodeResult:
     variant: str
     penetration_rate: float
     bias_mode: str
-    delay_s: int
+    delay_s: float
     nrmse_pct: float
     tnd_veh_h: float
     n_true_series: list[float]
@@ -46,7 +72,10 @@ def run_closed_loop_episode(cfg: EpisodeConfig, work_dir: Path | None = None) ->
     use_gate = "G1" in cfg.variant
     use_filter = "F1" in cfg.variant
     use_smith = "C1" in cfg.variant
-    delay_steps = max(0, cfg.delay_s // 60)
+    dt_s = 60.0
+    delay_s_val = max(0.0, float(cfg.delay_s))
+    delay_steps = int(delay_s_val // dt_s)
+    delay_frac = (delay_s_val - delay_steps * dt_s) / dt_s
 
     l_arterial_km = 9.6
     l_local_km = 19.2
@@ -78,11 +107,18 @@ def run_closed_loop_episode(cfg: EpisodeConfig, work_dir: Path | None = None) ->
         kp_norm=cfg.kp_norm,
         ki_norm=cfg.ki_norm,
         delay_steps=delay_steps if use_smith else 0,
+        delay_frac=delay_frac if use_smith else 0.0,
     )
 
+    n_init = 140.0
     obs_delay_buffer: deque[float] = deque(maxlen=delay_steps + 1)
-    n_true = 140.0
-    n_prev_true = 140.0
+    frac_obs_buffer = FractionalObservationDelayBuffer(
+        delay_steps=delay_steps,
+        delay_frac=delay_frac,
+        n_init=n_init,
+    )
+    n_true = n_init
+    n_prev_true = n_init
     external_queue_veh = 0.0
     u_current = 1.0
 
@@ -181,8 +217,11 @@ def run_closed_loop_episode(cfg: EpisodeConfig, work_dir: Path | None = None) ->
             }
             _, _, n_est = compute_stratified_edie(segments, uniform_specs, dt_window_s=60.0)
 
-        obs_delay_buffer.append(n_est)
-        n_delayed_obs = obs_delay_buffer[0]
+        if delay_frac == 0.0:
+            obs_delay_buffer.append(n_est)
+            n_delayed_obs = obs_delay_buffer[0]
+        else:
+            n_delayed_obs = frac_obs_buffer.push_and_read(n_est)
 
         u_current = controller.compute_u(
             n_delayed_obs=n_delayed_obs,

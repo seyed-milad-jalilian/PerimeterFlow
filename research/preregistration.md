@@ -15,7 +15,7 @@
 | Field | Value |
 | --- | --- |
 | Frozen plan | `docs/ANALYSIS_PLAN.md` |
-| SHA-256 | `dd6b39b457731f5506f4e6616331687563159615e51f2d085a075666809dbd41` |
+| SHA-256 | `87c30a046e9cef0572a842774857230ce136b5d041edd5387b4d997c5d1201dd` |
 | Verified at commit | `99acd494c34dd5006c316b5bec9f00d2b2a5de9f` |
 | Verified on (UTC) | 2026-10-16 |
 | Computed with | PowerShell `Get-FileHash -Algorithm SHA256` |
@@ -41,5 +41,18 @@ amendment — never silently.
 
 ## Amendments
 
-None. (Any post-freeze change to the analysis plan must be logged here with
-date, commit, and rationale, before evaluation results are interpreted.)
+1. **2026-10-18 — Pre-sweep amendment (before any evaluation seed is executed).**
+   Section **5.1 "Nomenclature & Units"** was added to `docs/ANALYSIS_PLAN.md`,
+   documenting the binding unit conventions (reported Edie macroscopic flow
+   $\hat{Q}(t)$ in $\text{veh/h}$ via $\Delta t_h = \Delta t/3600$; state-space
+   mass-balance quantities $Q_{\text{in}}(t)$, $\Phi(N)$ in $\text{veh/s}$
+   multiplied by $\Delta t = 60\,\text{s}$). Rationale: unit-conversion
+   documentation supporting Decision Records D3 and D10 in `docs/DECISIONS.md`
+   and the fractional sub-window latency rollout. No hypothesis, seed
+   partition, experimental factor, metric, or inference rule was modified.
+   **The SHA-256 in the Freeze evidence table above and in the Research
+   Proposal header must be re-computed against the amended file before the
+   first evaluation seed (`Seed 11`) is run** (`sha256sum
+   docs/ANALYSIS_PLAN.md`). Any post-freeze change to the analysis plan must be
+   logged here with date, commit, and rationale, before evaluation results are
+   interpreted.

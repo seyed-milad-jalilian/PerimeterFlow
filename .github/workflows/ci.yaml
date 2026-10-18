@@ -27,18 +27,20 @@ jobs:
           pip install uv
           uv pip install --system -e ".[dev]"
 
-      - name: Install Node dependencies (Vitest)
-        run: npm install
+      - name: Install Node dependencies (Vitest, locked)
+        run: npm ci
+        working-directory: web_worker
 
       - name: Initialize planned artifact & validate JSON Schema
         run: |
-          python -c "from pathlib import Path; from perimeterflow.stats_eval import write_planned_skeleton_artifact; write_planned_skeleton_artifact(Path('results/ensemble.json'), Path('configs/evaluate_seeds.yaml'))"
-          pytest tests/ -v
+          PYTHONPATH=src python -c "from pathlib import Path; from perimeterflow.stats_eval import write_planned_skeleton_artifact; write_planned_skeleton_artifact(Path('results/ensemble.json'), Path('configs/evaluate_seeds.yaml'))"
+          PYTHONPATH=src pytest tests/ -v
 
       - name: Verify 1e-9 Python-to-TypeScript Golden Parity
         run: |
-          python -m perimeterflow.cli --export-golden data/golden/parity_vectors.json
-          npx vitest run web_worker/parity.test.ts
+          PYTHONPATH=src python -m perimeterflow.cli --export-golden ../data/golden/parity_vectors.json
+          npx vitest run parity.test.ts
+        working-directory: web_worker
 
       - name: Verify Zero-Manual-Number LaTeX Macro Generation
         run: |

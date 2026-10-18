@@ -28,6 +28,31 @@ To what extent do sparse probe penetration ($1\% \le p \le 10\%$), topological c
   - Boundary penetration estimation error: $\delta_{\hat{p}} \in \{-30\%, 0\%, +30\%\}$
 
 ## 5. Primary Metrics & Non-Parametric Protocol
+
+### 5.1 Nomenclature & Units
+To prevent unit drift between the reported Edie macroscopic quantities and the
+discrete-time state-space mass balance, the following unit conventions are
+binding for every implementation (Python engine, TypeScript worker, and LaTeX
+reporting layer):
+
+| Symbol | Quantity | Units | Context |
+| :--- | :--- | :--- | :--- |
+| $\Delta t$ | Simulation / control window | $60\,\text{s}$ | Discrete-time step in all state-space equations |
+| $\Delta t_h$ | Report window | $\Delta t / 3600$ | Conversion factor for hourly reporting |
+| $\hat{Q}(t)$ | Edie macroscopic flow (reported) | $\text{veh/h}$ | Estimated from probe trajectories ($\Delta t_h$ applied) |
+| $Q_{\text{in}}(t)$ | State-space inflow | $\text{veh/s}$ | Mass-balance equation input (no $\Delta t_h$ conversion) |
+| $\Phi(N)$ | State-space outflow (MFD) | $\text{veh/s}$ | Used in PC-AKF propagation and Smith-PI rollout |
+| $N(t)$ | Accumulation | $\text{veh}$ | Consistent state variable |
+| $n_{\text{eff}}$ | Effective accumulation | $\text{veh}$ | Smith-PI controller input (post-rollout & residual) |
+
+*Note:* The discrete-time state-space mass-balance equation inside the PC-AKF
+and Smith-PI rollout operates in $\text{veh/s}$ — i.e., $Q_{\text{in}}(t)$ and
+$\Phi(N)$ are rates in $\text{veh/s}$ multiplied by the window length
+$\Delta t = 60\,\text{s}$ — whereas the *reported* Edie macroscopic flow
+$\hat{Q}(t)$ is converted to $\text{veh/h}$ by dividing the per-window vehicle
+count by $\Delta t_h = \Delta t/3600$. The two conventions are never mixed:
+only the reporting layer applies the $3600$ conversion factor.
+
 - **Estimation Metric:** $\text{NRMSE}(N)$ over 90 one-minute windows, normalized by the observed true-accumulation range:
   $$\text{NRMSE}(N) = \frac{\sqrt{\frac{1}{T}\sum_{t=1}^T (\hat{N}_t - N_{\text{true},t})^2}}{\max_t(N_{\text{true},t}) - \min_t(N_{\text{true},t})} \times 100\%$$
 - **Control Metric:** Total Network Delay ($\text{TND}$, in $\text{veh}\cdot\text{h}$) over the 5400s episode.

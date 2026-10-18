@@ -71,6 +71,29 @@ detector counts.
 - Edie's generalized definitions are used so that time-based and distance-based
   traffic quantities are integrated consistently over the observation window.
 
+**Stratified Penetration Identification ($\hat{p}_c$ anchoring).**
+Class-specific penetration estimates $\hat{p}_c(t)$ with
+$c \in \{\text{arterial}, \text{local}\}$ are anchored via *screenline loop
+counts*: boundary detector stations cut the reservoir into screenlines, and the
+observed loop volume crossing each screenline is divided by the gated probe
+volume of the same class over the identical time window. This yields a
+class-stratified penetration anchor that is *independent* of the probe-sampling
+process itself (preventing self-referential estimation). Because the screenline
+decomposition can only misattribute traffic between the two link classes — a
+bound quantifiable from the loop density along the screenline — the robustness
+stress factor $\delta_{\hat{p}} \in \{-30\%, 0\%, +30\%\}$ in Hypothesis $H_3$
+directly upper-bounds any residual screenline decomposition error: it inflates
+and deflates the anchored $\hat{p}_c(t)$ by 30%, covering the plausible range of
+misattribution without requiring an explicit screenline re-estimation inside the
+closed-loop runner.
+
+**Nomenclature & Units.** Edie macroscopic flow $\hat{Q}(t)$ is reported in
+$\text{veh/h}$ (converted via $\Delta t_h = \Delta t / 3600$), whereas the
+discrete-time state-space mass-balance equation inside the PC-AKF and the
+Smith-PI rollout operates in $\text{veh/s}$ ($Q_{\text{in}}(t)$ and $\Phi(N)$
+in $\text{veh/s}$ multiplied by $\Delta t = 60\,\text{s}$). The full binding
+table lives in `docs/ANALYSIS_PLAN.md` §5.1.
+
 ## D4 — Two-branch hysteresis physics-constrained adaptive Kalman filter
 
 **Decision.** Accumulation is propagated by a mass-balance equation with a
@@ -204,3 +227,38 @@ values, not in shape.
   couple of seeds drawn only from the calibration partition, zero delay, and no
   misspecification. It exists to verify plumbing on a laptop, never to support
   empirical claims — evaluation claims require the full evaluation config.
+
+## D10 — Fractional sub-window latency rollout ($\theta$ decomposition)
+
+**Decision.** Telemetry pipeline latency $\tau_d$ is decomposed into an integer
+window count $d_{\text{int}} = \lfloor \tau_d / \Delta t \rfloor$ and a
+sub-window fraction $\theta = (\tau_d \bmod \Delta t)/\Delta t \in [0, 1)$
+instead of flooring to $d = \lfloor \tau_d / \Delta t \rfloor$ alone. The
+fractional decomposition applies to three mechanisms, mirrored bit-for-bit in
+both Python and TypeScript: (i) the fractionally delayed telemetry observation
+$z_{\text{del}}(t) = (1-\theta) z(t-d_{\text{int}}) + \theta z(t-d_{\text{int}}-1)$
+delivered identically to the baseline PI (C0) and the Smith-PI (C1); (ii) a
+fractional Euler step of duration $\theta \Delta t$ over the most recent
+actuation $(q_{t-1}, u_{t-1})$, appended after the $d_{\text{int}}$ full-step
+rollout; and (iii) the residual correction blended against the fractional
+interpolation of the stored model-prediction buffer,
+$N_{\text{model,del}}(t) = (1-\theta) P(t-d_{\text{int}}) + \theta P(t-d_{\text{int}}-1)$,
+with degenerate fallback to the head of the history when fewer than two
+predictions are available.
+
+**Rationale.**
+- Under pure flooring, $\tau_d = 30\,\text{s}$ with $\Delta t = 60\,\text{s}$
+  collapses to $d = 0$, making the half-window latency regime mathematically
+  indistinguishable from zero delay and rendering the H3/H4 stress levels
+  degenerate. The fractional decomposition preserves the pre-registered
+  $\tau_d \in \{0\,\text{s}, 30\,\text{s}, 60\,\text{s}\}$ levels as genuinely
+  distinct control regimes.
+- Exact degeneracy is retained at both endpoints: $\tau_d = 0$
+  ($d_{\text{int}} = 0$, $\theta = 0$) collapses bit-for-bit to the tuned
+  normalized PI baseline, and $\tau_d = \Delta t$ ($d_{\text{int}} = 1$,
+  $\theta = 0$) reproduces the legacy integer-step rollout exactly. Both
+  invariants are locked by golden parity vectors and asserted in unit tests to
+  $10^{-9}$ tolerance.
+- The fractionally delayed observation is consumed identically by C0 and C1, so
+  the experimental contrast isolates the compensation mechanism (rollout +
+  residual correction) from the telemetry pathway itself.

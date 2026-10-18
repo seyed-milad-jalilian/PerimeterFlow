@@ -248,6 +248,27 @@ export class HysteresisAwarePCAKF {
   }
 }
 
+export class FractionalObservationDelayBuffer {
+  public readonly delay_steps: number;
+  public readonly delay_frac: number;
+  private readonly history: number[] = [];
+
+  constructor(delaySteps: number, delayFrac: number, nInit: number) {
+    this.delay_steps = Math.max(0, Math.trunc(delaySteps));
+    this.delay_frac = delayFrac;
+    this.history.push(nInit);
+  }
+
+  public pushAndRead(zT: number): number {
+    this.history.push(zT);
+    const tNow = this.history.length - 2;
+    const sRecent = tNow - this.delay_steps;
+    const iRecent = sRecent >= 0 ? sRecent + 1 : 0;
+    const iPrev = sRecent >= 1 ? sRecent : 0;
+    return (1.0 - this.delay_frac) * this.history[iRecent] + this.delay_frac * this.history[iPrev];
+  }
+}
+
 export class ResidualCorrectedSmithPIController {
   public readonly n_crit: number;
   public readonly kp_norm: number;
@@ -256,10 +277,12 @@ export class ResidualCorrectedSmithPIController {
   public readonly u_max: number;
   public readonly delay_steps: number;
   public readonly residual_gain: number;
+  public readonly delay_frac: number;
   private u_prev = 1.0;
   private err_prev = 0.0;
   private actuation_history: Array<[number, number]> = [];
   private model_pred_history: number[] = [];
+  private last_actuation: [number, number] | null = null;
 
   constructor(
     nCrit: number,
@@ -268,7 +291,8 @@ export class ResidualCorrectedSmithPIController {
     uMin = 0.15,
     uMax = 1.0,
     delaySteps = 0,
-    residualGain = 0.5
+    residualGain = 0.5,
+    delayFrac = 0.0
   ) {
     this.n_crit = Math.max(1.0, nCrit);
     this.kp_norm = kpNorm;
@@ -277,6 +301,10 @@ export class ResidualCorrectedSmithPIController {
     this.u_max = uMax;
     this.delay_steps = Math.max(0, Math.trunc(delaySteps));
     this.residual_gain = residualGain;
+    if (!(0.0 <= delayFrac && delayFrac < 1.0)) {
+      throw new Error("delayFrac must satisfy 0.0 <= delayFrac < 1.0");
+    }
+    this.delay_frac = delayFrac;
     this.model_pred_history.push(this.n_crit);
   }
 
@@ -286,15 +314,35 @@ export class ResidualCorrectedSmithPIController {
     kfModel: HysteresisAwarePCAKF,
     dtS = 60.0
   ): number {
+    const hasFullRollout = this.delay_steps > 0 && this.actuation_history.length > 0;
+    const hasFracRollout = this.delay_frac > 0.0 && this.last_actuation !== null;
+
     let nRollout = nDelayedObs;
     let nEffective = nDelayedObs;
 
-    if (this.delay_steps > 0 && this.actuation_history.length > 0) {
-      for (const [pastQIn, pastU] of this.actuation_history) {
-        const outflow = kfModel.mfdOutflow(nRollout, false);
-        nRollout = Math.max(0.0, Math.min(nRollout + dtS * (pastQIn * pastU - outflow), kfModel.n_jam));
+    if (hasFullRollout || hasFracRollout) {
+      if (hasFullRollout) {
+        for (const [pastQIn, pastU] of this.actuation_history) {
+          const outflow = kfModel.mfdOutflow(nRollout, false);
+          nRollout = Math.max(0.0, Math.min(nRollout + dtS * (pastQIn * pastU - outflow), kfModel.n_jam));
+        }
       }
-      const nModelDelayed = this.model_pred_history[0];
+      if (hasFracRollout) {
+        const qPrev = this.last_actuation![0];
+        const uPrev = this.last_actuation![1];
+        const outflow = kfModel.mfdOutflow(nRollout, false);
+        nRollout = Math.max(
+          0.0,
+          Math.min(nRollout + this.delay_frac * dtS * (qPrev * uPrev - outflow), kfModel.n_jam)
+        );
+      }
+      let nModelDelayed: number;
+      if (this.delay_frac > 0.0 && this.model_pred_history.length >= 2) {
+        nModelDelayed =
+          (1.0 - this.delay_frac) * this.model_pred_history[1] + this.delay_frac * this.model_pred_history[0];
+      } else {
+        nModelDelayed = this.model_pred_history[0];
+      }
       const residual = nDelayedObs - nModelDelayed;
       nEffective = Math.max(0.0, Math.min(nRollout + this.residual_gain * residual, kfModel.n_jam));
     }
@@ -303,13 +351,16 @@ export class ResidualCorrectedSmithPIController {
     const deltaU = -this.kp_norm * (errT - this.err_prev) - this.ki_norm * errT;
     const uNew = Math.max(this.u_min, Math.min(this.u_max, this.u_prev + deltaU));
 
-    if (this.delay_steps > 0) {
-      if (this.actuation_history.length >= this.delay_steps) {
-        this.actuation_history.shift();
+    if (this.delay_steps > 0 || this.delay_frac > 0.0) {
+      if (this.delay_steps > 0) {
+        if (this.actuation_history.length >= this.delay_steps) {
+          this.actuation_history.shift();
+        }
+        this.actuation_history.push([qInCurrent, uNew]);
       }
-      this.actuation_history.push([qInCurrent, uNew]);
-
-      if (this.model_pred_history.length >= this.delay_steps + 1) {
+      this.last_actuation = [qInCurrent, uNew];
+      const predCap = this.delay_steps + (this.delay_frac > 0.0 ? 2 : 1);
+      if (this.model_pred_history.length >= predCap) {
         this.model_pred_history.shift();
       }
       this.model_pred_history.push(nRollout);

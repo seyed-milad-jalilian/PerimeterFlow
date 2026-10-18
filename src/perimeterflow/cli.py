@@ -18,7 +18,18 @@ from .stats_eval import (
     paired_wilcoxon_pvalue,
     validate_artifact_dict,
 )
-from .traci_runner import EpisodeConfig, run_closed_loop_episode
+from .traci_runner import EpisodeConfig, FractionalObservationDelayBuffer, run_closed_loop_episode
+
+
+def _normalize_delay_s(delay_s) -> float:
+    delay_val = float(delay_s)
+    if delay_val < 0.0:
+        raise ValueError("delay_s must be non-negative")
+    return delay_val
+
+
+def _delay_tag(delay_val: float) -> str:
+    return str(int(delay_val)) if float(delay_val).is_integer() else str(delay_val)
 
 
 def export_golden_parity_vectors(out_path: Path) -> None:
@@ -56,6 +67,30 @@ def export_golden_parity_vectors(out_path: Path) -> None:
         ctrl.compute_u(430.0, 0.95, kf, dt_s=60.0),
     ]
 
+    frac_obs_series = [210.0, 265.0, 320.0, 435.0, 480.0, 410.0, 350.0, 300.0, 275.0, 250.0]
+    frac_q_in_series = [0.95, 0.95, 1.05, 1.10, 1.00, 0.90, 0.80, 0.75, 0.70, 0.70]
+
+    buf30 = FractionalObservationDelayBuffer(delay_steps=0, delay_frac=0.5, n_init=140.0)
+    z_del30 = [buf30.push_and_read(z) for z in frac_obs_series]
+
+    kf30 = HysteresisAwarePCAKF(n_init=200.0, n_crit=400.0, n_jam=1000.0, m_max_load=0.9)
+    ctrl30 = ResidualCorrectedSmithPIController(
+        n_crit=400.0, kp_norm=0.85, ki_norm=0.22, delay_steps=0, delay_frac=0.5
+    )
+    u30_steps = [
+        ctrl30.compute_u(z_del, q_in, kf30, dt_s=60.0)
+        for z_del, q_in in zip(z_del30, frac_q_in_series)
+    ]
+
+    kf90 = HysteresisAwarePCAKF(n_init=200.0, n_crit=400.0, n_jam=1000.0, m_max_load=0.9)
+    ctrl90 = ResidualCorrectedSmithPIController(
+        n_crit=400.0, kp_norm=0.85, ki_norm=0.22, delay_steps=1, delay_frac=0.5
+    )
+    u90_steps = [
+        ctrl90.compute_u(z_del, q_in, kf90, dt_s=60.0)
+        for z_del, q_in in zip(z_del30, frac_q_in_series)
+    ]
+
     payload = {
         "seed": 202601,
         "prng_floats": prng_floats,
@@ -68,6 +103,27 @@ def export_golden_parity_vectors(out_path: Path) -> None:
         "expected_edie": {"k_hat": k_hat, "q_hat": q_hat, "n_hat": n_hat},
         "expected_kf_steps": kf_steps,
         "expected_u_steps": u_steps,
+        "fractional_delay": {
+            "dt_s": 60.0,
+            "n_init": 140.0,
+            "obs_series": frac_obs_series,
+            "q_in_series": frac_q_in_series,
+            "buffer": {
+                "delay_steps": 0,
+                "delay_frac": 0.5,
+                "expected_z_del": z_del30,
+            },
+            "smith_tau30": {
+                "delay_steps": 0,
+                "delay_frac": 0.5,
+                "expected_u_steps": u30_steps,
+            },
+            "smith_tau90": {
+                "delay_steps": 1,
+                "delay_frac": 0.5,
+                "expected_u_steps": u90_steps,
+            },
+        },
     }
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -79,7 +135,7 @@ def run_calibration(config_path: Path, out_path: Path) -> None:
     seeds: list[int] = cfg_data["seeds"]
     pen_rate = float(cfg_data.get("penetration_rate", 0.02))
     bias_mode = str(cfg_data.get("bias_mode", "corridor_biased"))
-    delay_s = int(cfg_data.get("delay_s", 60))
+    delay_s = _normalize_delay_s(cfg_data.get("delay_s", 60))
     kp_grid: list[float] = cfg_data.get("kp_grid", [0.65, 0.85, 1.05])
     ki_grid: list[float] = cfg_data.get("ki_grid", [0.15, 0.22, 0.30])
 
@@ -130,7 +186,8 @@ def run_sweep_from_config(config_path: Path, out_path: Path, params_path: Path |
     variants: list[str] = cfg_data.get("variants", ["G0_F0_C0", "G1_F0_C0", "G0_F1_C0", "G1_F1_C0", "G1_F1_C1"])
     pen_rate = float(cfg_data.get("penetration_rate", 0.02))
     bias_mode = str(cfg_data.get("bias_mode", "corridor_biased"))
-    delay_s = int(cfg_data.get("delay_s", 60))
+    delay_s = _normalize_delay_s(cfg_data.get("delay_s", 60))
+    delay_s_out = int(delay_s) if delay_s.is_integer() else delay_s
 
     tuned_gains = {"C0": {"kp_norm": 0.85, "ki_norm": 0.22}, "C1": {"kp_norm": 0.85, "ki_norm": 0.22}}
     if params_path is not None and params_path.exists():
@@ -162,10 +219,10 @@ def run_sweep_from_config(config_path: Path, out_path: Path, params_path: Path |
         tnds = np.array([r.tnd_veh_h for r in results_by_variant[v]], dtype=np.float64)
         summary_table.append(
             {
-                "condition_id": f"p{int(pen_rate*100):02d}_{bias_mode}_delay{delay_s}_{v}",
+                "condition_id": f"p{int(pen_rate*100):02d}_{bias_mode}_delay{_delay_tag(delay_s)}_{v}",
                 "penetration_rate": pen_rate,
                 "bias_mode": bias_mode,
-                "delay_s": delay_s,
+                "delay_s": delay_s_out,
                 "variant": v,
                 "n_seeds": len(seeds),
                 "nrmse_median_pct": float(np.median(nrmses)),

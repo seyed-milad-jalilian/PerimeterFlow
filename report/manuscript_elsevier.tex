@@ -1,0 +1,127 @@
+% =====================================================================
+% PerimeterFlow — Elsevier manuscript entrypoint (cas-dc)
+% Target journals: Transportation Research Part C: Emerging Technologies /
+%                  Transportation Research Part B: Methodological
+% Build:           pdflatex manuscript_elsevier && bibtex manuscript_elsevier
+%                  && pdflatex manuscript_elsevier && pdflatex manuscript_elsevier
+% ZERO MANUAL NUMBERS: all quantitative values are injected via
+% \input{generated_metrics.tex} (see docs/MANUSCRIPT_EDITORIAL_PROTOCOL.md).
+% =====================================================================
+\documentclass[a4paper,fleqn]{cas-dc}
+
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage[numbers,sort&compress]{natbib}
+
+\input{generated_metrics.tex}
+
+\begin{document}
+
+\let\WriteBookmarks\relax
+
+\def\floatpagepagefraction{8}
+\def\textpagefraction{8}
+
+\shorttitle{Latency-compensated perimeter control under sparse probes}
+\shortauthors{Jalilian S.M.}
+
+\title[mode = title]{Bias-Aware Estimation and Latency-Compensated Perimeter Control under Sparse Probe Penetration: A Pre-Registered Closed-Loop MFD Framework}
+
+\author[1]{Seyed Milad Jalilian}
+\ead{contact@miladjalilian.me}
+\address[1]{Department of Civil, Architectural and Environmental Engineering,
+University of Naples Federico II, Naples, Italy}
+
+\credit{Conceptualization}
+\credit{Methodology}
+\credit{Software}
+\credit{Validation}
+\credit{Formal analysis}
+\credit{Investigation}
+\credit{Data curation}
+\credit{Writing -- original draft}
+\credit{Writing -- review \& editing}
+\credit{Visualization}
+
+\affiliation[1]{organization={Department of Civil, Architectural and Environmental Engineering},
+            city={Naples},
+            postcode={80125},
+            state={},
+            country={Italy}}
+
+\begin{abstract}
+Feedback perimeter control utilizing the Macroscopic Fundamental Diagram (MFD) is a scalable approach to metropolitan congestion management, yet empirical deployment is constrained by sparse probe penetration ($1\%$--$5\%$), topological corridor selection bias, GPS multipath noise, and telemetry pipeline latency. This work formulates an integrated, pre-registered estimation-and-control architecture comprising four defensive layers: (i) a stateful kinematic quality gate that evaluates vehicle kinematics strictly against the last accepted valid ping per vehicle; (ii) a stratified link-class Horvitz--Thompson Edie estimator anchored by boundary detector counts; (iii) a two-branch hysteresis physics-constrained adaptive Kalman filter (PC-AKF) whose observation covariance scales with the gate rejection rate; and (iv) a residual-corrected Smith-PI perimeter controller that rolls the nonlinear MFD plant model forward across the telemetry delay and provably degenerates to a tuned normalized PI controller at zero delay. The framework is evaluated on an $8\times 8$ two-reservoir SUMO grid across \EvalSeedCount{} held-out evaluation seeds under a strict calibration/evaluation seed firewall, and against empirical urban trajectory benchmarks from Amsterdam's municipal road network. All reported numbers are injected mechanically from a versioned result artifact, and a Python--TypeScript parity harness ($\le 10^{-9}$) enables independent client-side verification of every quantity.
+\end{abstract}
+
+\begin{keywords}
+Macroscopic Fundamental Diagram \sep Perimeter control \sep Kalman filtering \sep Sparse probe data \sep Spatial bias \sep Latency compensation \sep Pre-registration
+\end{keywords}
+
+\maketitle
+
+\section{Introduction}
+\label{sec:intro}
+Urban traffic networks experience capacity drop and gridlock when vehicular accumulation exceeds critical density \cite{daganzo2007urban,geroliminis2008existence}. Perimeter control regulates flow across reservoir boundaries to maintain accumulation near optimal production thresholds \cite{keyvan2012exploiting,haddad2012stability,geroliminis2013optimal}. Practical implementations, however, depend on floating vehicle data exhibiting low penetration and severe spatial bias---clustering along arterial corridors while leaving local streets unmonitored \cite{ambuhl2016data,du2016deriving,nagle2014accuracy}.
+
+Four failure modes threaten the validity of MFD-based feedback control under such conditions: (1) GPS multipath outliers corrupting vehicle kinematics; (2) corridor selection bias distorting Edie-based network production estimates; (3) MFD parameter misspecification and hysteresis degrading filter tracking; and (4) telemetry pipeline latency destabilizing feedback loops \cite{normeyrico2008dead,yuan2023computational,keyvan2014perimeter}. Each defensive layer of the proposed architecture addresses exactly one of these modes, and each contribution is pre-registered before any sweep is executed \cite{nosek2018preregistration,munafo2017manifesto}.
+
+\section{Framework: Four Defensive Layers}
+\label{sec:framework}
+
+\subsection{Layer 1: Stateful Kinematic Quality Gate}
+For each vehicle trajectory, a sequential gate evaluates the candidate ping strictly against the \emph{last accepted valid ping} of the same vehicle, rather than against its immediate predecessor. A candidate ping is accepted only if the implied speed and displacement respect kinematic envelopes; gate rejections are recorded per vehicle with a bounded quarantine mechanism that prevents permanent blacklisting after transient multipath episodes.
+
+\subsection{Layer 2: Stratified Link-Class Horvitz--Thompson Edie Estimator}
+Gated trajectories are partitioned into link classes $c \in \{\text{arterial}, \text{local}\}$. Per class, Edie's generalized definitions \cite{edie1963discussion} integrate gated travel time and distance over the observation window, and the class accumulation is divided by a floor-protected class penetration estimate $\hat{p}_c$ anchored to boundary detector counts (screenline decomposition). Horvitz--Thompson weighting \cite{horvitz1952generalization} then combines the strata with class and total lane-kilometer weights, neutralizing the arterial over-representation that a single unstratified inverse-penetration correction would inherit.
+
+\subsection{Layer 3: Two-Branch Hysteresis PC-AKF}
+Accumulation is propagated by a mass-balance equation with a two-branch outflow function: a loading branch and an unloading branch with a reduced maximum, engaged when the accumulation estimate is decreasing while still congested \cite{gayah2011hysteresis,geroliminis2011b}. Observation covariance is inflated dynamically by the gate rejection rate $\rho_{\text{reject}}(t)$, so that sensor distrust translates directly into wider credible intervals \cite{kalman1960new,wang2005real,saeedmanesh2021extended}.
+
+\subsection{Layer 4: Residual-Corrected Smith-PI Perimeter Control}
+The controller synthesizes a normalized PI law over a Smith-type predictor \cite{smith1957closer,normeyrico2008dead}: the nonlinear MFD plant model is rolled forward across the buffered telemetry delay using the most recent buffered actuations, and a residual correction term blends the delayed observation against the model's delayed prediction. The law provably degenerates to a tuned normalized PI controller at zero delay and maintains genuine delay compensation at integer sub-window delays ($\tau_d = 60\,\text{s}$: one full rollout step) as well as at fractional sub-window delays ($\tau_d = 30\,\text{s}$: a half-window $\theta = 0.5$ rollout step interpolating between buffered observations).
+
+\section{Pre-Registered Experimental Design}
+\label{sec:design}
+Simulations are conducted on an $8\times 8$ two-reservoir SUMO grid \cite{lopez2018microscopic} with a 90-minute hysteresis demand profile. The pre-registered plan (Section~\ref{sec:prereg}) fixes: probe penetration $\{1\%, 2\%, 5\%\}$; sampling topology \{uniform, corridor-biased $4{:}1$ arterial-to-local\}; telemetry delay $\tau_d \in \{0, 30, 60\}\,\text{s}$ with the fractional sub-window parameter $\theta = (\tau_d \bmod \Delta t)/\Delta t \in [0,1)$; and a $2\times 2\times 2$ ablation over estimation and control layers (G0/G1 $\times$ F0/F1 $\times$ C0/C1). Calibration seeds 1--10 tune controller gains exclusively; evaluation seeds 11--40 ($n=\EvalSeedCount$) are held out for paired non-parametric inference (Hodges--Lehmann median difference, Cliff's $\delta$, Wilcoxon signed-rank with Holm--Bonferroni adjustment) \cite{wilcoxon1945individual,hodges1963estimates,cliff1993dominance,holm1979simple,efron1993introduction}.
+
+\begin{table}[t]
+\caption{Pre-registered primary results (zero manual numbers; macros injected from the versioned result artifact).}
+\label{tab:results}
+\begin{tabular}{lcccc}
+\toprule
+Variant & NRMSE$(N)$ median [\%] & TND median [veh$\cdot$h] & Cliff's $\delta$ & Holm $p$ \\
+\midrule
+Unfiltered + Tuned PI   & \MetricNRMSEBaseline & \MetricTNDBaseline & --- & --- \\
+Proposed full stack     & \MetricNRMSESmith    & \MetricTNDSmith    & \MetricCliffsDelta & \MetricHolmP \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Empirical Validation Scope (Amsterdam)}
+\label{sec:amsterdam}
+The pipeline is validated against empirical urban trajectory benchmarks drawn from Amsterdam's municipal road network (NDW open data) \cite{ndw2024amsterdam,knoop2013empirical,newson2009hidden}. \textbf{Scope statement:} the NDW benchmark is an \emph{open-loop estimation} validation---the replayed historical trajectories cannot be counterfactually actuated, i.e., \texttt{closed\_loop\_actuation\_supported=False}. Consequently, Amsterdam validation establishes estimation-layer accuracy (gate, stratified Edie, PC-AKF) against ground-truth loop counts, while closed-loop control claims (Layer~4) are established exclusively within the SUMO simulation environment where actuation is supported.
+
+\section{Reproducibility and Verification}
+\label{sec:prereg}
+Hypotheses, seed partitioning, primary metrics, and inference rules were frozen before any evaluation sweep; the frozen analysis plan is verified by a SHA-256 digest recorded in the repository's Git provenance. Every artifact carries a Draft 2020-12 JSON Schema validation with a machine-checkable status lifecycle (\texttt{planned} $\rightarrow$ \texttt{reproduced-in-ci}). A Python--TypeScript parity harness re-executes the estimator and controller numerically in a Web Worker and asserts $\le 10^{-9}$ agreement with the Python golden vectors, enabling independent client-side verification of every reported number \cite{sandve2013ten}.
+
+\section{Declarations}
+
+\subsection*{CRediT authorship contribution statement}
+\textbf{Seyed Milad Jalilian:} Conceptualization, Methodology, Software, Validation, Formal analysis, Investigation, Data curation, Writing -- original draft, Writing -- review \& editing, Visualization.
+
+\subsection*{Declaration of competing interest}
+The author declares that he has no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
+
+\subsection*{Data and code availability}
+All simulation code, network definitions, pre-registered configuration files, and figure-generating routines are released under the MIT license through the open-source \textit{PerimeterFlow} platform at Git commit \texttt{\ArtifactGitSHA} (artifact status: \texttt{\ArtifactStatus}). Amsterdam NDW validation data are publicly available under the terms stated by the Nationale Databank Wegverkeersgegevens and the City of Amsterdam \cite{ndw2024amsterdam}.
+
+\subsection*{Declaration of generative AI in the writing process}
+During the preparation of this work the author used large-language-model coding assistants to support software implementation, documentation drafting, and manuscript typesetting. All scientific content, hypotheses, mathematical formulations, experimental designs, interpretations, and conclusions were conceived, verified, and are owned by the author, who reviewed and edited all output and takes full responsibility for the content of the published article. This disclosure follows the Elsevier policy on the use of generative AI in scientific writing.
+
+\bibliographystyle{elsarticle-num}
+\bibliography{bibliography}
+
+\end{document}

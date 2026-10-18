@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  FractionalObservationDelayBuffer,
   computeStratifiedEdie,
   HysteresisAwarePCAKF,
   Mulberry32,
@@ -59,5 +60,56 @@ describe("Python-to-TypeScript 1e-9 Golden Parity Suite", () => {
     expect(Math.abs(u1 - golden.expected_u_steps[0])).toBeLessThanOrEqual(1e-9);
     expect(Math.abs(u2 - golden.expected_u_steps[1])).toBeLessThanOrEqual(1e-9);
     expect(Math.abs(u3 - golden.expected_u_steps[2])).toBeLessThanOrEqual(1e-9);
+  });
+
+  it("matches fractional sub-window latency (tau_d = 30 s, theta = 0.5) buffer and Smith-PI outputs within 1e-9", () => {
+    const fd = golden.fractional_delay;
+
+    const buf = new FractionalObservationDelayBuffer(
+      fd.buffer.delay_steps,
+      fd.buffer.delay_frac,
+      fd.n_init
+    );
+    const zDel: number[] = [];
+    for (const z of fd.obs_series) {
+      zDel.push(buf.pushAndRead(z));
+    }
+    zDel.forEach((z, idx) => {
+      expect(Math.abs(z - fd.buffer.expected_z_del[idx])).toBeLessThanOrEqual(1e-9);
+    });
+
+    const tau30 = fd.smith_tau30;
+    const kf30 = new HysteresisAwarePCAKF(200.0, 400.0, 1000.0, 0.9);
+    const ctrl30 = new ResidualCorrectedSmithPIController(
+      400.0,
+      0.85,
+      0.22,
+      0.15,
+      1.0,
+      tau30.delay_steps,
+      0.5,
+      tau30.delay_frac
+    );
+    zDel.forEach((z, idx) => {
+      const u = ctrl30.computeU(z, fd.q_in_series[idx], kf30, fd.dt_s);
+      expect(Math.abs(u - tau30.expected_u_steps[idx])).toBeLessThanOrEqual(1e-9);
+    });
+
+    const tau90 = fd.smith_tau90;
+    const kf90 = new HysteresisAwarePCAKF(200.0, 400.0, 1000.0, 0.9);
+    const ctrl90 = new ResidualCorrectedSmithPIController(
+      400.0,
+      0.85,
+      0.22,
+      0.15,
+      1.0,
+      tau90.delay_steps,
+      0.5,
+      tau90.delay_frac
+    );
+    zDel.forEach((z, idx) => {
+      const u = ctrl90.computeU(z, fd.q_in_series[idx], kf90, fd.dt_s);
+      expect(Math.abs(u - tau90.expected_u_steps[idx])).toBeLessThanOrEqual(1e-9);
+    });
   });
 });

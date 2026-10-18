@@ -7,7 +7,7 @@
 * **Principal Investigator:** Seyed Milad Jalilian
 * **Affiliation:** University of Naples Federico II
 * **Repository / Software Engine:** [PerimeterFlow](https://github.com/seyed-milad-jalilian/perimeterflow) (Open-source, MIT License)
-* **Pre-Registration Status:** **Frozen Protocol** (`docs/ANALYSIS_PLAN.md`, SHA-256: `dd6b39b457731f5506f4e6616331687563159615e51f2d085a075666809dbd41`, commit `99acd494c34dd5006c316b5bec9f00d2b2a5de9f`)
+* **Pre-Registration Status:** **Frozen Protocol** (`docs/ANALYSIS_PLAN.md`, SHA-256: `87c30a046e9cef0572a842774857230ce136b5d041edd5387b4d997c5d1201dd`, commit `99acd494c34dd5006c316b5bec9f00d2b2a5de9f`)
 * **Evidentiary Standing:** **Pre-Sweep / Planned.** In strict adherence to the project's honesty contract, all evaluation seed metrics (`Seeds 11..40`) remain `null`, and all emitted artifacts carry `"status": "planned"`. No empirical or counterfactual claims are stated prior to the execution of the frozen pipeline.
 
 ---
@@ -151,7 +151,7 @@ flowchart TB
         L1["LAYER 1: Stateful Anchor-Preserving Quality Gate<br/>Compares pings strictly to last accepted anchor<br/>v_calc ≤ 22.22 m/s · a_calc ∈ [-6.5, +4.5] m/s²<br/>Emits data health metric: ρ_reject(t)"]
         L2["LAYER 2: Stratified Horvitz-Thompson Edie Estimator<br/>Inverse-penetration weighting per link-class c<br/>Anchored to boundary counts · Floor p_min=0.005<br/>Computes unbiased accumulation z(t) = N_hat"]
         L3["LAYER 3: Two-Branch Hysteresis PC-AKF<br/>Mass balance + analytic outflow Jacobian<br/>Adaptive noise inflation: R_t ∝ exp(α_gate · ρ_reject)<br/>State bounded to [0, N_jam] · Blackout prediction"]
-        DELAY["Cloud Pipeline Delay Buffer<br/>τ_d ∈ {0s, 30s, 60s} → d = ⌊τ_d / 60⌋ steps"]
+        DELAY["Cloud Pipeline Delay Buffer<br/>τ_d ∈ {0s, 30s, 60s} → d_int = ⌊τ_d / 60⌋, θ = (τ_d mod 60)/60"]
         L4["LAYER 4: Residual-Corrected Smith-PI Controller<br/>Forward MFD rollout over d buffered past inputs<br/>Residual correction: δ = z(t-d) - N_model(t-d)<br/>Incremental PI on normalized error e_t<br/>Hard saturation u(t) ∈ [0.15, 1.00]"]
         
         L1 -->|"Accepted Trajectory Segments"| L2
@@ -220,15 +220,22 @@ with baseline calibration parameters $R_{\text{base}} = 120.0$, $p_{\text{ref}} 
 If an observation is missing/NaN, effective penetration $\hat{p}_{\text{eff}} \le 0.001$, or gate rejection $\rho_{\text{reject}}(t) \ge 0.95$, the measurement update is skipped entirely ($K_t = 0, N_t = N_{t \mid t-1}, P_t = P_{t \mid t-1}$). This pure prediction step preserves the mathematical integrity of error covariance propagation.
 
 ### 5.4 Layer 4: Residual-Corrected Smith-PI Perimeter Controller
-In the presence of telemetry latency $\tau_d$, the controller receives stale state estimates delayed by $d = \lfloor \tau_d / \Delta t \rfloor$ discrete steps. To prevent oscillatory instability, Layer 4 maintains circular ring buffers of past boundary inflows, gate commands, and model predictions: $\mathcal{H}_u = \{u_{t-d}, \dots, u_{t-1}\}$ and $\mathcal{H}_q = \{q_{t-d}, \dots, q_{t-1}\}$.
+In the presence of telemetry latency $\tau_d$, the controller receives stale state estimates delayed by $d_{\text{float}} = \tau_d / \Delta t$ steps, decomposed into an integer window count $d_{\text{int}} = \lfloor \tau_d / \Delta t \rfloor$ and a sub-window fraction $\theta = (\tau_d \bmod \Delta t) / \Delta t \in [0, 1)$. This fractional decomposition eliminates the quantization collapse where $\tau_d = 30\,\text{s}$ with $\Delta t = 60\,\text{s}$ would floor to $d = 0$ and render the half-window regime indistinguishable from zero delay. To prevent oscillatory instability, Layer 4 maintains circular ring buffers of past boundary inflows, gate commands, and model predictions: $\mathcal{H}_u = \{u_{t-d_{\text{int}}}, \dots, u_{t-1}\}$ and $\mathcal{H}_q = \{q_{t-d_{\text{int}}}, \dots, q_{t-1}\}$.
+
+#### Fractional Telemetry Delivery
+Both the baseline PI (C0) and the Smith-PI (C1) consume the identical fractional delayed observation, obtained by linear interpolation across the sub-window boundary:
+$$z_{\text{del}}(t) = (1 - \theta)\, z(t) + \theta\, z(t-1), \qquad z(t) = n_{\text{init}} \;\text{for}\; t \le 0$$
+This preserves a common actuation signal across all controllers, isolating the C0/C1 comparison to the compensation mechanism rather than the telemetry pathway.
 
 #### Forward Rollout and Residual Blending
-1. **Rollout:** The delayed estimate $z(t-d)$ is propagated forward across the $d$ buffered actuations using the physical MFD model:
-   $$\tilde{N}_{k} = \tilde{N}_{k-1} + \Delta t \left[ q_{k-1} u_{k-1} - \Phi(\tilde{N}_{k-1}) \right], \quad k = t-d+1, \dots, t, \quad \tilde{N}_{t-d} = z(t-d)$$
-   yielding the uncorrected forward prediction $N_{\text{roll}}(t)$.
-2. **Residual Correction:** The residual mismatch at the delayed time station is computed and blended via gain $\gamma = 0.5$:
-   $$\delta_{t-d} = z(t-d) - N_{\text{model}}(t-d)$$
-   $$N_{\text{eff}}(t) = \text{clip}\left( N_{\text{roll}}(t) + \gamma \delta_{t-d}, \; 0, \; N_{\text{jam}} \right)$$
+1. **Rollout:** The fractional delayed estimate $z_{\text{del}}(t)$ is propagated forward across the $d_{\text{int}}$ buffered integer actuations using the physical MFD model:
+   $$\tilde{N}_{k} = \tilde{N}_{k-1} + \Delta t \left[ q_{k-1} u_{k-1} - \Phi(\tilde{N}_{k-1}) \right], \quad k = t-d_{\text{int}}+1, \dots, t, \quad \tilde{N}_{t-d_{\text{int}}} = z_{\text{del}}(t)$$
+   When $\theta > 0$, a single fractional Euler step of duration $\theta \Delta t$ is appended using the most recent buffered actuation $(q_{t-1}, u_{t-1})$, yielding the uncorrected forward prediction $N_{\text{roll}}(t)$.
+2. **Residual Correction:** The residual mismatch is evaluated at the fractional delayed time station $t - d_{\text{int}} - \theta$ against the blended model-prediction buffer:
+   $$N_{\text{model,del}}(t) = \begin{cases} (1-\theta)\, N_{\text{model}}(t - d_{\text{int}}) + \theta\, N_{\text{model}}(t - d_{\text{int}} - 1) & \text{if } \theta > 0 \text{ and history length} \ge 2 \\ N_{\text{model}}(t - d_{\text{int}}) & \text{otherwise} \end{cases}$$
+   $$\delta_{t-\theta} = z_{\text{del}}(t) - N_{\text{model,del}}(t)$$
+   $$N_{\text{eff}}(t) = \text{clip}\left( N_{\text{roll}}(t) + \gamma\, \delta_{t-\theta}, \; 0, \; N_{\text{jam}} \right), \quad \gamma = 0.5$$
+   The blending gain $\gamma$ is applied uniformly across integer and fractional regimes; the sub-window fraction $\theta$ enters exclusively through the fractional delivery interpolation, the fractional Euler step, and the blended residual baseline.
 
 #### Normalized Incremental PI Law
 Gating commands are synthesized over the dimensionless normalized error $e_t$:
@@ -238,7 +245,7 @@ $$e_t = \frac{N_{\text{eff}}(t) - N_{\text{crit}}}{N_{\text{crit}}}$$
 $$u_t = \text{clip}\left( u_{t-1} - K_p (e_t - e_{t-1}) - K_i e_t, \; 0.15, \; 1.00 \right)$$
 
 #### Provable Degeneracy
-When latency $\tau_d = 0$ ($d = 0$), the delay buffer length is zero, $N_{\text{roll}}(t) \equiv z(t)$, $\delta_t \equiv 0$, and $N_{\text{eff}}(t) \equiv z(t)$. Thus, Layer 4 mathematically collapses to a standard normalized PI regulator. This property is asserted in unit testing to a tolerance of $10^{-9}$ ($u = 0.893$).
+When latency $\tau_d = 0$ ($d_{\text{int}} = 0$, $\theta = 0$), the fractional delivery collapses exactly to $z_{\text{del}}(t) = z(t)$, the rollout length is zero, no fractional Euler step is taken, and $N_{\text{eff}}(t) \equiv z(t)$. When $\tau_d = \Delta t$ ($d_{\text{int}} = 1$, $\theta = 0$), the arithmetic is bit-for-bit identical to the integer-step formulation. Thus, Layer 4 mathematically collapses to a standard normalized PI regulator at $\tau_d = 0$ while genuinely compensating the half-window phase lag at $\tau_d = 30\,\text{s}$ ($\theta = 0.5$). These properties are asserted in unit testing to a tolerance of $10^{-9}$ ($u = 0.893$ at $d = 0$) and verified by cross-language parity vectors for all $\tau_d \in \{0, 30, 60\}\,\text{s}$ regimes.
 
 ### 5.5 Two Coupled Feedback Loops
 A core innovation of PerimeterFlow is the presence of two interacting feedback loops:
@@ -307,7 +314,7 @@ The research programme spans a rigorous 12-month schedule structured into six wo
 
 | Work Package | Focus & Operational Tasks | Target Deliverables & Milestones | Timeline |
 | :--- | :--- | :--- | :--- |
-| **WP1** | **Protocol Refinement & Registry Freeze:** Resolve schema open items (gate metrics, stress row IDs); deposit preregistration snapshot on OSF.io; verify $10^{-9}$ PRNG parity. | **D1.1:** OSF Pre-registration DOI.<br/>**M1:** Pre-sweep verification gate green. | Month 1 |
+| **WP1** | **Protocol Refinement & Registry Freeze:** Resolve schema open items (gate metrics, stress row IDs); enforce the Cryptographically Frozen Pre-Registration Protocol ([docs/ANALYSIS_PLAN.md](../docs/ANALYSIS_PLAN.md), SHA-256 verified in Git provenance); verify $10^{-9}$ PRNG parity. | **D1.1:** Cryptographic freeze record (SHA-256 in Git provenance).<br/>**M1:** Pre-sweep verification gate green. | Month 1 |
 | **WP2** | **Calibration & Baseline Freezing:** Run calibration sweep on Seeds 1..10; execute $3 \times 3$ $(K_p, K_i)$ grid search for PI and Smith-PI; commit frozen parameters. | **D2.1:** Calibration Report & Frozen Parameter Manifest.<br/>**M2:** Gain freeze commit locked. | Months 1–2 |
 | **WP3** | **Pre-Registered Evaluation Sweep:** Execute $n=30$ seed factorial matrix via cloud-native k3s IndexedJobs; generate JSON artifacts; run independent CI reproduction. | **D3.1:** Complete schema-validated evaluation artifact.<br/>**M3:** Artifact status `reproduced-in-ci`. | Months 2–4 |
 | **WP4** | **Empirical Field Validation:** Ingest Amsterdam NDW/Gemeente trajectory slices; execute estimation-only validation; assert non-actuation constraint. | **D4.1:** Empirical Trajectory Validation Dossier.<br/>**M4:** Field benchmark completed. | Months 4–6 |
@@ -369,26 +376,11 @@ PerimeterFlow implements a three-tier execution hierarchy ensuring reproducibili
 
 ---
 
-## 12. Team, Academic Advisory, and Institutional Environment
+## 12. Principal Investigator and Research Governance
 
 * **Principal Investigator:** Seyed Milad Jalilian (Department of Civil, Architectural and Environmental Engineering, University of Naples Federico II). Responsible for mathematical formulation, control theory synthesis, cloud-native simulation engineering, and manuscript writing.
-* **Academic Advisory & Benchmarking Network (Targeted Collaborations):**
-  * *Prof. Mehdi Keyvan-Ekbatani* (University of Canterbury / CTSLab) — Pioneer in feedback perimeter gating and time-delayed traffic control; his group's current research program on reduced-NMFD sensor selection under sparse instrumentation (Mousavizadeh and Keyvan-Ekbatani, 2024) and penetration-unknown multi-reservoir state estimation from sparse floating car data (Mousavizadeh and Keyvan-Ekbatani, 2026) directly parallels the defensive estimation stack of this project.
-  * *A/Prof. Dr. Mehmet Yildirimoglu* (University of Queensland) — Expert in large-scale traffic modeling, dynamic traffic assignment, and MFD estimation from probe data; his group's recent advances span penetration-rate-free MFD estimation solely from probe trajectories (Saffari, Yildirimoglu, and Hickman, 2023) and equity-aware data-driven congestion pricing via constrained deep reinforcement learning (Parishad, Yildirimoglu, and Hickman, 2026), both directly adjacent to the bias-aware estimation and data-driven management questions of this project.
-  * *Prof. Dr. Meead Saberi* (UNSW Sydney) — Authority on empirical network fundamental diagrams and large-scale urban mobility analytics; pioneered the extension of Edie's definitions to network-scale flow estimation from three-dimensional vehicle trajectories (Saberi et al., 2014) and 3D passenger-MFD joint routing and pricing control in bimodal mixed-autonomy networks (Mansourianfar, Gu, and Saberi, 2024).
-  * *Dr. Victor L. Knoop* (TU Delft) — Traffic flow theorist specializing in macroscopic network dynamics and experimental traffic analysis; co-developer of the queue- and delay-balancing distribution of metered flow in perimeter control (Keyvan-Ekbatani et al., 2021), the boundary-actuation design question most closely coupled to this project's Layer 4.
-  * *Prof. Dr. Dong Ngoduy* (Monash University) — Expert in traffic flow theory, stochastic modeling, and knowledge-data fusion; recent contributions include stochastic physics-informed deep learning for traffic state estimation (Wang et al., 2026), physics-informed trajectory prediction (Xue et al., 2026), and adaptive multi-layer trajectory outlier reconstruction (Li et al., 2025).
-  * *Prof. Dr. ir. J.W.C. (Hans) van Lint* (TU Delft) — Professor of Traffic Simulation and Computing and long-standing authority on traffic state estimation, data fusion, and data-driven traffic prediction; his group's current program embeds heterogeneous data fusion directly into network control, including privacy-preserving max-pressure operation and control under partially connected vehicle environments (Tan, Sun, et al., 2026b; Tan, Rinaldi, et al., 2026a).
-  * *Prof. Vinayak Dixit* (UNSW Sydney) — Pioneer of probe-based MFD density estimation (Gayah and Dixit, 2013) and co-author of the contagion-process characterization of urban congestion spreading (Saberi et al., 2020); expert in network resilience, risk, and emerging computational technologies for transport systems.
-  * *Prof. Dr. Hai L. Vu* (Monash University) — Expert in intelligent transportation systems, stochastic modeling, and connected corridor dynamics; recent contributions include percolation-based dynamic perimeter control (Hamedmoghadam et al., 2022) and physics-informed deep learning for vehicle trajectory prediction (Xue et al., 2026).
-  * *Prof. Dr. Zuduo Zheng* (University of Queensland) — Expert in traffic flow theory, driving behavior, and vehicle trajectory data quality; recent work includes physics-informed uncertainty quantification for deep learning-based real-time prediction (Cao et al., 2026) and validated adaptive multi-layer trajectory reconstruction for outlier removal (Li et al., 2025).
-  * *Dr. Yanan Xin* (TU Delft) — Specialist in interpretable machine learning, mobility-based anomaly detection, and urban mobility analytics; contributor to metropolitan-scale floating car speed datasets spanning all street levels (Neun et al., 2023) and to the open-science agenda for movement research (Dodge et al., 2026).
-  * *Prof. Ashish Bhaskar* (Queensland University of Technology) — Expert in transport big data analytics, modeling, and network signal control; recent pressure-adaptive group-based signal control (Ghosh et al., 2026) represents the deployable control layer with which perimeter gating must compose.
-  * *Prof. Alexander Paz* (Queensland University of Technology) — Transport and Main Roads Chair; expert in transport modeling and simulation, congestion management, and field-scale evaluation of traffic operations.
-  * *A/Prof. Dr. Jiwon Kim* (University of Queensland) — Expert in network traffic modeling and data-driven estimation; recent work includes a physics-informed deep learning framework for real-time arterial traffic state estimation (Abewickrema, Yildirimoglu, and Kim, 2026) and strategic design of hybrid shared micromobility systems (Saadati, Yildirimoglu, and Kim, 2026).
-  * *A/Prof. Dr. Prakash Ranjitkar* (University of Auckland) — Expert in traffic operations, microsimulation calibration, and probe data quality; recent point–path collaborative imputation for missing trajectories (Luo et al., 2026).
-  * *Prof. Dr. Majid Sarvi* (University of Melbourne) — Founder and Director of the AIMES (Australian Integrated Multimodal EcoSystem) living laboratory; expert in traffic flow and smart urban mobility systems; recent physics-informed forecasting generalization to regions without traffic observations (Su et al., 2026).
-  * *Dr. Minh Kieu* (University of Auckland) — Specialist in public transit modeling and urban data assimilation.
+* **Open-Science Governance:** This project is governed by a pre-registered, cryptographically frozen protocol rather than an advisory hierarchy. Hypotheses $H_1$–$H_4$, the strict calibration/evaluation seed firewall (`Seeds 1..10` vs. `Seeds 11..40`), primary metrics, and the non-parametric inference rules are immutably recorded in [`docs/ANALYSIS_PLAN.md`](../docs/ANALYSIS_PLAN.md) (SHA-256 verified in Git provenance). All code, network definitions, and figure-generating routines are released under the MIT Open Source License; every result artifact is validated against a Draft 2020-12 JSON Schema with a machine-checkable status lifecycle (`planned` → `reproduced-in-ci`); and the Python $\leftrightarrow$ TypeScript ($\le 10^{-9}$) parity harness enables independent client-side verification of every reported number. Scientific guidance beyond the Principal Investigator is sought exclusively through the ordinary open-science channels of conference discourse, pre-print feedback, and transparent journal peer review; any such guidance ultimately received is disclosed in the corresponding manuscript's acknowledgements in accordance with COPE transparency norms.
+* **Institutional Environment:** The Principal Investigator is hosted at the University of Naples Federico II (Department of Civil, Architectural and Environmental Engineering), which provides the institutional affiliation, research infrastructure, and open-access publication support for this work.
 
 ---
 
@@ -500,7 +492,7 @@ In adherence to scientific best practices, potential methodological threats are 
 * Sirmatel, I. I., & Geroliminis, N. (2019). Moving horizon demand and state estimation for model predictive perimeter control of large-scale urban networks. In *Proceedings of the 2019 18th European Control Conference (ECC)* (pp. 3704–3709). https://doi.org/10.23919/ECC.2019.8796123
 * Sirmatel, I. I., & Geroliminis, N. (2021). Stabilization of city-scale road traffic networks via macroscopic fundamental diagram-based model predictive perimeter control. *Transportation Research Part C: Emerging Technologies*, 122, 102581. https://doi.org/10.1016/j.trc.2020.102581
 * Smith, O. J. M. (1957). Closer control of loops with dead time. *Chemical Engineering Progress*, 53(5), 217–219.
-* Su, X., Sarvi, M., Liu, F., Tanin, E., & Qi, J. (2026). Generalising traffic forecasting to regions without traffic observations. In *Proceedings of the 40th AAAI Conference on Artificial Intelligence (AAAI-26)*. arXiv:2508.08947. https://doi.org/10.48550/arXiv.2508.08947
+* Su, X., Sarvi, M., Liu, F., Tanin, E., & Qi, J. (2026). Generalising traffic forecasting to regions without traffic observations. In *Proceedings of the 40th AAAI Conference on Artificial Intelligence (AAAI-26)*. arXiv:2508.08947.
 * Tan, C., Rinaldi, M., Zeng, Y., Wang, M., Tang, K., & van Lint, J. W. C. (2026a). Private-MP: Privacy-preserving max-pressure control based on heterogeneous data fusion. *Transportation Research Part C: Emerging Technologies*, 191, 105848. https://doi.org/10.1016/j.trc.2026.105848
 * Tan, C., Sun, D., Liu, H., Rinaldi, M., & van Lint, J. W. C. (2026b). CV-MP: Max-pressure control in heterogeneously distributed and partially connected vehicle environments. *Transportation Research Part B: Methodological*, 204, 103387. https://doi.org/10.1016/j.trb.2025.103387
 * Trinh, X.-S., Keyvan-Ekbatani, M., Ngoduy, D., & Robertson, B. (2024). Stochastic Switching Mode Model based Filters for urban arterial traffic estimation from multi-source data. *Transportation Research Part C: Emerging Technologies*, 164, 104664. https://doi.org/10.1016/j.trc.2024.104664
